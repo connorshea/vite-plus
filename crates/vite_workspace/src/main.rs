@@ -74,6 +74,14 @@ impl WorkspaceMemberGlobs {
     }
 }
 
+#[derive(Copy, Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum DependencyType {
+    Normal,
+    Dev,
+    Peer,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PackageJson {
@@ -83,26 +91,30 @@ struct PackageJson {
     dependencies: HashMap<CompactString, CompactString>,
     #[serde(default)]
     dev_dependencies: HashMap<CompactString, CompactString>,
+    #[serde(default)]
+    peer_dependencies: HashMap<CompactString, CompactString>,
 }
 
 impl PackageJson {
-    fn get_workspace_dependencies(&self) -> impl Iterator<Item = CompactString> + use<'_> {
+    fn get_workspace_dependencies(&self) -> impl Iterator<Item = (CompactString, DependencyType)> + use<'_> {
         self.dependencies
-            .iter()
-            .chain(self.dev_dependencies.iter())
-            .flat_map(|(key, value)| {
+            .iter().map(|entry| (entry, DependencyType::Normal))
+            .chain(self.dev_dependencies.iter().map(|entry| (entry, DependencyType::Dev)))
+            .chain(self.peer_dependencies.iter().map(|entry| (entry, DependencyType::Peer)))
+            .flat_map(|((key, value), dep_type)| {
                 let Some(workspace_version) = value.strip_prefix("workspace:") else {
                     // TODO: support link-workspace-packages: https://pnpm.io/workspaces#workspace-protocol-workspace)
                     return None;
                 };
                 // TODO: support paths: https://github.com/pnpm/pnpm/pull/2972
-                Some(
+                Some((
                     if let Some((name, _)) = workspace_version.rsplit_once("@") {
                         CompactString::new(name)
                     } else {
                         key.clone()
                     },
-                )
+                    dep_type,
+                ))
             })
     }
 }
@@ -115,8 +127,8 @@ struct PackageInfo {
 
 #[derive(Default)]
 struct PackageGraphBuilder {
-    id_and_deps_by_name: HashMap<CompactString, (NodeIndex, Vec<CompactString>)>,
-    graph: Graph<PackageInfo, ()>,
+    id_and_deps_by_name: HashMap<CompactString, (NodeIndex, Vec<(CompactString, DependencyType)>)>,
+    graph: Graph<PackageInfo, DependencyType>,
 }
 
 impl PackageGraphBuilder {
@@ -146,17 +158,17 @@ impl PackageGraphBuilder {
         }
         Ok(())
     }
-    fn build(mut self) -> Graph<PackageInfo, ()> {
+    fn build(mut self) -> Graph<PackageInfo, DependencyType> {
         for (_, (id, deps)) in &self.id_and_deps_by_name {
-            for dep_name in deps {
+            for (dep_name, dep_type) in deps {
                 let dep_id = self.id_and_deps_by_name[dep_name].0;
-                self.graph.add_edge(*id, dep_id, ());
+                self.graph.add_edge(*id, dep_id, *dep_type);
             }
         }
         self.graph
     }
 }
-fn get_package_graph(workspace_root: impl AsRef<Path>) -> anyhow::Result<Graph<PackageInfo, ()>> {
+fn get_package_graph(workspace_root: impl AsRef<Path>) -> anyhow::Result<Graph<PackageInfo, DependencyType>> {
     let workspace_root = workspace_root.as_ref();
     let workspace_yaml_path = workspace_root.join("pnpm-workspace.yaml");
     let workspace_yaml = fs::read_to_string(workspace_yaml_path)?;
@@ -184,13 +196,14 @@ fn get_package_graph(workspace_root: impl AsRef<Path>) -> anyhow::Result<Graph<P
 fn main() -> anyhow::Result<()> {
     let workspace_root = std::env::args_os().nth(1).unwrap_or_else(|| current_dir().unwrap().into_os_string()); 
     let package_graph = get_package_graph(workspace_root)?;
+    
+    println!("Package graph built on {} packages and {} edges", package_graph.node_count(), package_graph.edge_count());
     let graph_json = serde_json::to_vec(&package_graph)?;
-    let server = tiny_http::Server::http("0.0.0.0:0").map_err(|err| anyhow::anyhow!(err))?;
+    let server = tiny_http::Server::http("127.0.0.1:0").map_err(|err| anyhow::anyhow!(err))?;
 
     let port = server.server_addr().to_ip().unwrap().port();
-    println!("{}", serde_json::to_string_pretty(&package_graph)?);
     let url = format!("http://localhost:{port}/");
-    println!("{url}");
+    println!("Serving the package graph visualization at {url}...");
     if let Err(err) = webbrowser::open(&url) {
         eprintln!("Failed to open {url} with the default browser: {err}");
     }

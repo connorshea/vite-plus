@@ -4,9 +4,17 @@ import './styles.css'
 
 export interface GraphData {
   nodes: Array<{ name: string, path: string }>;
-  edges: Array<[number, number, null]>;
+  edges: Array<[number, number, 'normal' | 'dev' | 'peer']>;
   [key: string]: any;
 }
+
+const normalLinkColor = '#D0D9E0';
+const devLinkColor = 'lightgreen';
+const peerLinkColor = 'lightblue';
+
+document.body.style.setProperty('--vw-normal-link-color', normalLinkColor);
+document.body.style.setProperty('--vw-dev-link-color', devLinkColor);  
+document.body.style.setProperty('--vw-peer-link-color', peerLinkColor);
 
 function graphDataToMermaidMarkdown(data: GraphData): string {
   const lines = ["graph LR"];
@@ -14,10 +22,25 @@ function graphDataToMermaidMarkdown(data: GraphData): string {
     // TODO: unescape
     lines.push(`${index}("${node.name}<br/>${node.path}")`)
   }
-  for (const [from, to] of data.edges) {
+  const peerEdgeIndexes: number[] = [];
+  const devEdgeIndexes: number[] = [];
+  for (const [index, [from, to, type]] of data.edges.entries()) {
+    if (type === 'peer') {
+      peerEdgeIndexes.push(index);
+    }
+    if (type === 'dev') {
+      devEdgeIndexes.push(index);
+    }
     lines.push(`${from} --> ${to}`)
   }
-  lines.push('', 'linkStyle default stroke-width:2px;');
+  lines.push('',
+    'linkStyle default stroke-width:2px;');
+  if (peerEdgeIndexes.length > 0) {
+    lines.push(`linkStyle ${peerEdgeIndexes.join(',')} stroke:${peerLinkColor};`);
+  }
+  if (devEdgeIndexes.length > 0) {
+    lines.push(`linkStyle ${devEdgeIndexes.join(',')} stroke:${devLinkColor};`);
+  }
   return lines.join('\n');
 }
 
@@ -31,7 +54,7 @@ mermaid.initialize({
   },
   themeVariables: {
     fontSize: "13px",
-    lineColor: '#D0D9E0',
+    lineColor: normalLinkColor,
     primaryBorderColor: 'rgb(209, 217, 224)',
     primaryColor: '#FFFFFF'
   }
