@@ -3,7 +3,12 @@ mod task_command;
 mod task_graph_builder;
 mod workspace;
 
-use std::{ffi::OsStr, future::Future, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ffi::OsStr,
+    future::Future,
+    sync::Arc,
+};
 
 use bincode::{Decode, Encode};
 use compact_str::ToCompactString;
@@ -78,7 +83,8 @@ impl ResolvedTask {
             subcommand_index: self.name.subcommand_index,
             task_group_id: TaskGroupId {
                 task_group_name: self.name.task_group_name.clone(),
-                package_path: self.resolved_config.config_dir.clone(),
+                config_path: self.resolved_config.config_dir.clone(),
+                is_builtin: self.name.package_name.is_none(),
             },
         }
     }
@@ -89,12 +95,16 @@ impl ResolvedTask {
             return false;
         }
 
+        let Some(package_name) = &self.name.package_name else {
+            // never match built-in task
+            return false;
+        };
+
         // match tasks in current package if the task_request doesn't contain '#'
         if !task_request.contains('#') {
             return current_package_path == Some(&self.resolved_config.config_dir)
                 && self.name.task_group_name == task_request;
         };
-        let package_name = self.name.package_name.as_str();
 
         task_request.get(..package_name.len()) == Some(package_name)
             && task_request.get(package_name.len()..=package_name.len()) == Some("#")
@@ -142,6 +152,7 @@ impl ResolvedTask {
             program: bin_path.into(),
         });
         let task_config: TaskConfig = builtin_task.clone().into();
+        let pass_through_envs = task_config.pass_through_envs.iter().cloned().collect();
         let cwd = &workspace.cwd;
         let resolved_task_config =
             ResolvedTaskConfig { config_dir: cwd.clone(), config: task_config };
@@ -150,13 +161,17 @@ impl ResolvedTask {
             fingerprint: CommandFingerprint {
                 cwd: cwd.clone(),
                 command: builtin_task,
-                envs_without_pass_through: resolved_envs.envs_without_pass_through,
+                envs_without_pass_through: resolved_envs
+                    .envs_without_pass_through
+                    .into_iter()
+                    .collect(),
+                pass_through_envs,
             },
             all_envs: resolved_envs.all_envs,
         };
         Ok(Self {
             name: TaskName {
-                package_name: workspace.package_json.name.as_str().into(),
+                package_name: None,
                 task_group_name: task_name.into(),
                 subcommand_index: None,
             },
@@ -214,7 +229,11 @@ pub struct CommandFingerprint {
     pub cwd: RelativePathBuf,
     pub command: TaskCommand,
     /// Environment variables that affect caching (excludes pass-through envs)
-    pub envs_without_pass_through: HashMap<Str, Str>,
+    pub envs_without_pass_through: BTreeMap<Str, Str>, // using BTreeMap to have a stable order in cache db
+
+    /// even though value changes to pass_through_envs shouldn't invalidate the cache,
+    /// The names should still be fingerprinted so that the cache can be invalidated if the pass_through_envs config changes
+    pub pass_through_envs: BTreeSet<Str>, // using BTreeSet to have a stable order in cache db
 }
 
 #[cfg(test)]

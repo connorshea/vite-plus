@@ -1,3 +1,6 @@
+use diff::Diff;
+use rusqlite::config::DbConfig;
+use std::fmt::Display;
 use std::sync::Arc;
 use vite_path::AbsolutePath;
 
@@ -8,27 +11,28 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 
 use crate::Error;
-use crate::config::{CommandFingerprint, ResolvedTask};
+use crate::config::{CommandFingerprint, CommandFingerprintDiff, ResolvedTask, TaskId};
 use crate::execute::{ExecutedTask, StdOutput};
-use crate::fingerprint::{FingerprintMismatch, TaskFingerprint};
+use crate::fingerprint::{PostRunFingerprint, PostRunFingerprintMismatch};
 use crate::fs::FileSystem;
 use vite_str::Str;
 
+/// Command cache value, for validating post-run fingerprint after the command fingerprint is matched,
+/// and replaying the std outputs if validated.
 #[derive(Debug, Encode, Decode, Serialize)]
-pub struct CachedTask {
-    pub fingerprint: TaskFingerprint,
+pub struct CommandCacheValue {
+    pub post_run_fingerprint: PostRunFingerprint,
     pub std_outputs: Arc<[StdOutput]>,
 }
 
-impl CachedTask {
+impl CommandCacheValue {
     pub fn create(
-        task: ResolvedTask,
         executed_task: ExecutedTask,
         fs: &impl FileSystem,
         base_dir: &AbsolutePath,
     ) -> Result<Self, Error> {
-        let fingerprint = TaskFingerprint::create(task, &executed_task, fs, base_dir)?;
-        Ok(Self { fingerprint, std_outputs: executed_task.std_outputs })
+        let post_run_fingerprint = PostRunFingerprint::create(&executed_task, fs, base_dir)?;
+        Ok(Self { post_run_fingerprint, std_outputs: executed_task.std_outputs })
     }
 }
 
@@ -37,9 +41,11 @@ pub struct TaskCache {
     conn: Mutex<Connection>,
 }
 
+/// Key to identify a task run.
+/// It includes the additional args, so the same task with different args wouldn't overwrite each other.
 #[derive(Debug, Encode, Decode, Serialize)]
-pub struct TaskCacheKey {
-    pub command_fingerprint: CommandFingerprint,
+pub struct TaskRunKey {
+    pub task_id: TaskId,
     pub args: Arc<[Str]>,
 }
 
@@ -49,6 +55,27 @@ const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard
 pub enum CacheMiss {
     NotFound,
     FingerprintMismatch(FingerprintMismatch),
+}
+
+#[derive(Debug)]
+pub enum FingerprintMismatch {
+    /// Found the cache entry of the same task run, but the command fingerprint mismatches
+    /// this happens when the command itself or an env changes.
+    CommandFingerprintMismatch(CommandFingerprintDiff),
+    /// Found the cache entry with the same command fingerprint, but the post-run fingerprint mismatches
+    PostRunFingerprintMismatch(PostRunFingerprintMismatch),
+}
+
+impl Display for FingerprintMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FingerprintMismatch::CommandFingerprintMismatch(diff) => {
+                // TODO: improve the display of command fingerprint diff
+                write!(f, "Command fingerprint changed: {:?}", diff)
+            }
+            FingerprintMismatch::PostRunFingerprintMismatch(diff) => Display::fmt(diff, f),
+        }
+    }
 }
 
 impl TaskCache {
@@ -61,12 +88,24 @@ impl TaskCache {
             match user_version {
                 0 => {
                     // fresh new db
-                    conn.execute("CREATE TABLE tasks (key BLOB PRIMARY KEY, value BLOB);", ())?;
-                    conn.execute("PRAGMA user_version = 1", ())?;
+                    conn.execute(
+                        "CREATE TABLE command_cache (key BLOB PRIMARY KEY, value BLOB);",
+                        (),
+                    )?;
+                    conn.execute(
+                        "CREATE TABLE taskrun_to_command (key BLOB PRIMARY KEY, value BLOB);",
+                        (),
+                    )?;
+                    conn.execute("PRAGMA user_version = 2", ())?;
                 }
-                // Migration done here
-                1 => break,
-                2.. => return Err(Error::UnrecognizedDbVersion(user_version)),
+                1 => {
+                    // internal versions during dev, we just rebuild the whole cache
+                    conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, true)?;
+                    conn.execute("VACUUM", ())?;
+                    conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, false)?;
+                }
+                2 => break, // current version
+                3.. => return Err(Error::UnrecognizedDbVersion(user_version)),
             }
         }
         conn.execute_batch("COMMIT")?;
@@ -82,59 +121,13 @@ impl TaskCache {
     pub async fn update(
         &mut self,
         resolved_task: &ResolvedTask,
-        cached_task: CachedTask,
+        cached_task: CommandCacheValue,
     ) -> Result<(), Error> {
-        let key = TaskCacheKey {
-            command_fingerprint: resolved_task.resolved_command.fingerprint.clone(),
-            args: resolved_task.args.clone(),
-        };
-        let conn = self.conn.lock().await;
-        let key_blob = encode_to_vec(&key, BINCODE_CONFIG)?;
-        let value_blob = encode_to_vec(&cached_task, BINCODE_CONFIG)?;
-        let mut update_stmt = conn.prepare_cached(
-            "INSERT INTO tasks (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2"
-        )?;
-        update_stmt.execute([key_blob, value_blob])?;
-        Ok(())
-    }
-
-    pub async fn get_cache(
-        &self,
-        resolved_task: &ResolvedTask,
-    ) -> Result<Option<CachedTask>, Error> {
-        let key = TaskCacheKey {
-            command_fingerprint: resolved_task.resolved_command.fingerprint.clone(),
-            args: resolved_task.args.clone(),
-        };
-        let conn = self.conn.lock().await;
-        let mut select_stmt = conn.prepare_cached("SELECT value FROM tasks WHERE key=?")?;
-        let key_blob = encode_to_vec(&key, BINCODE_CONFIG)?;
-        let Some(value_blob) =
-            select_stmt.query_row::<Vec<u8>, _, _>([key_blob], |row| row.get(0)).optional()?
-        else {
-            return Ok(None);
-        };
-        let (cached_task, _) = decode_from_slice::<CachedTask, _>(&value_blob, BINCODE_CONFIG)?;
-        Ok(Some(cached_task))
-    }
-
-    pub async fn list_cache(
-        &self,
-        mut f: impl FnMut(TaskCacheKey, CachedTask) -> Result<(), Error>,
-    ) -> Result<(), Error> {
-        let conn = self.conn.lock().await;
-        let mut select_stmt = conn.prepare_cached("SELECT key, value FROM tasks")?;
-        let cache_list = select_stmt.query_and_then((), |row| {
-            let key_blob: Vec<u8> = row.get(0)?;
-            let value_blob: Vec<u8> = row.get(1)?;
-            let (key, _) = decode_from_slice::<TaskCacheKey, _>(&key_blob, BINCODE_CONFIG)?;
-            let (cached_task, _) = decode_from_slice::<CachedTask, _>(&value_blob, BINCODE_CONFIG)?;
-            Ok::<_, Error>((key, cached_task))
-        })?;
-        for cache in cache_list {
-            let (key, cached_task) = cache?;
-            f(key, cached_task)?;
-        }
+        let task_run_key =
+            TaskRunKey { task_id: resolved_task.id(), args: resolved_task.args.clone() };
+        let command_fingerprint = &resolved_task.resolved_command.fingerprint;
+        self.upsert_command_cache(command_fingerprint, &cached_task).await?;
+        self.upsert_taskrun_to_command(&task_run_key, command_fingerprint).await?;
         Ok(())
     }
 
@@ -144,13 +137,107 @@ impl TaskCache {
         task: &ResolvedTask,
         fs: &impl FileSystem,
         base_dir: &AbsolutePath,
-    ) -> Result<Result<CachedTask, CacheMiss>, Error> {
-        let Some(cached_task) = self.get_cache(task).await? else {
-            return Ok(Err(CacheMiss::NotFound));
-        };
-        if let Some(fingerprint_mismatch) = cached_task.fingerprint.validate(task, fs, base_dir)? {
-            return Ok(Err(CacheMiss::FingerprintMismatch(fingerprint_mismatch)));
+    ) -> Result<Result<CommandCacheValue, CacheMiss>, Error> {
+        let task_run_key = TaskRunKey { task_id: task.id(), args: task.args.clone() };
+        let command_fingerprint = &task.resolved_command.fingerprint;
+        // Try to directly find the command cache by command fingerprint first, ignoring the task run key
+        if let Some(cache_value) =
+            self.get_command_cache_by_command_fingerprint(command_fingerprint).await?
+        {
+            if let Some(post_run_fingerprint_mismatch) =
+                cache_value.post_run_fingerprint.validate(fs, base_dir)?
+            {
+                // Found the command cache with the same command fingerprint, but the post-run fingerprint mismatches
+                Ok(Err(CacheMiss::FingerprintMismatch(
+                    FingerprintMismatch::PostRunFingerprintMismatch(post_run_fingerprint_mismatch),
+                )))
+            } else {
+                // Associate the task run key to the command fingerprint if not already,
+                // so that next time we can find it and report command fingerprint mismatch
+                self.upsert_taskrun_to_command(&task_run_key, command_fingerprint).await?;
+                Ok(Ok(cache_value))
+            }
+        } else {
+            if let Some(task_run_fingerprint) =
+                self.get_command_fingerprint_by_task_run_key(&task_run_key).await?
+            {
+                // No command cache found with the current command fingerprint,
+                // but found a command fingerprint associated with the same task run key,
+                // meaning the command or env has changed since last run
+                Ok(Err(CacheMiss::FingerprintMismatch(
+                    FingerprintMismatch::CommandFingerprintMismatch(
+                        command_fingerprint.diff(&task_run_fingerprint),
+                    ),
+                )))
+            } else {
+                Ok(Err(CacheMiss::NotFound))
+            }
         }
-        Ok(Ok(cached_task))
+    }
+}
+
+// basic database operations
+impl TaskCache {
+    async fn get_key_by_value<K: Encode, V: Decode<()>>(
+        &self,
+        table: &str,
+        key: &K,
+    ) -> Result<Option<V>, Error> {
+        let conn = self.conn.lock().await;
+        let mut select_stmt =
+            conn.prepare_cached(&format!("SELECT value FROM {} WHERE key=?", table))?;
+        let key_blob = encode_to_vec(key, BINCODE_CONFIG)?;
+        let Some(value_blob) =
+            select_stmt.query_row::<Vec<u8>, _, _>([key_blob], |row| row.get(0)).optional()?
+        else {
+            return Ok(None);
+        };
+        let (value, _) = decode_from_slice::<V, _>(&value_blob, BINCODE_CONFIG)?;
+        Ok(Some(value))
+    }
+    async fn get_command_cache_by_command_fingerprint(
+        &self,
+        command_fingerprint: &CommandFingerprint,
+    ) -> Result<Option<CommandCacheValue>, Error> {
+        self.get_key_by_value("command_cache", command_fingerprint).await
+    }
+    async fn get_command_fingerprint_by_task_run_key(
+        &self,
+        task_run_key: &TaskRunKey,
+    ) -> Result<Option<CommandFingerprint>, Error> {
+        self.get_key_by_value("taskrun_to_command", task_run_key).await
+    }
+
+    async fn upsert<K: Encode, V: Encode>(
+        &self,
+        table: &str,
+        key: &K,
+        value: &V,
+    ) -> Result<(), Error> {
+        let conn = self.conn.lock().await;
+        let key_blob = encode_to_vec(key, BINCODE_CONFIG)?;
+        let value_blob = encode_to_vec(value, BINCODE_CONFIG)?;
+        let mut update_stmt = conn.prepare_cached(&format!(
+            "INSERT INTO {} (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2",
+            table
+        ))?;
+        update_stmt.execute([key_blob, value_blob])?;
+        Ok(())
+    }
+
+    async fn upsert_command_cache(
+        &self,
+        command_fingerprint: &CommandFingerprint,
+        cached_task: &CommandCacheValue,
+    ) -> Result<(), Error> {
+        self.upsert("command_cache", command_fingerprint, cached_task).await
+    }
+
+    async fn upsert_taskrun_to_command(
+        &self,
+        task_run_key: &TaskRunKey,
+        command_fingerprint: &CommandFingerprint,
+    ) -> Result<(), Error> {
+        self.upsert("taskrun_to_command", task_run_key, command_fingerprint).await
     }
 }

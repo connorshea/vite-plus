@@ -206,12 +206,12 @@ impl Workspace {
         Ok(())
     }
 
+    /// Resolve a task configuration into a ResolvedTask when building the task graph.
     fn resolve_task(
         user_task_config: impl Into<TaskConfig>,
         package_info: &PackageInfo,
         name: Str,
         subcommand_index: Option<usize>,
-        task_args: Arc<[Str]>,
         base_dir: &AbsolutePath,
     ) -> Result<ResolvedTask, Error> {
         let resolved_config = ResolvedTaskConfig {
@@ -219,14 +219,15 @@ impl Workspace {
             config: user_task_config.into(),
         };
 
-        let resolved_command = resolved_config.resolve_command(base_dir, &task_args)?;
+        let resolved_command = resolved_config.resolve_command(base_dir, &[])?;
         Ok(ResolvedTask {
             name: TaskName {
                 task_group_name: name,
                 package_name: package_info.package_json.name.clone().into(),
                 subcommand_index,
             },
-            args: task_args,
+            // additional args are not part of full task graph, they will be added when constructing subgraph for execution
+            args: Arc::default(),
             resolved_command,
             resolved_config,
             is_builtin: false,
@@ -310,7 +311,8 @@ impl Workspace {
                     let task_id_to_match = TaskId {
                         task_group_id: TaskGroupId {
                             task_group_name: task_request.clone(),
-                            package_path: package.path.clone().into(),
+                            config_path: package.path.clone().into(),
+                            is_builtin: false,
                         },
                         // Starts with the main command only. The subcommands before the main command will be included later as dependencies.
                         subcommand_index: None,
@@ -361,6 +363,8 @@ impl Workspace {
                 "Pre-built tasks in the full task graph should not contain additional args"
             );
             if !task_args.is_empty() {
+                // This is needed for constructing the task run key for caching, so that different args lead to different task runs.
+                updated_task.args = task_args.clone();
                 updated_task.resolved_command = updated_task
                     .resolved_config
                     .resolve_command(&self.workspace_dir, &task_args)?;
@@ -401,7 +405,6 @@ impl Workspace {
                         package_info,
                         task_group_name.clone(),
                         None,
-                        Arc::default(),
                         base_dir,
                     )?;
 
@@ -452,7 +455,8 @@ impl Workspace {
                                 Ok(TaskId {
                                     task_group_id: TaskGroupId {
                                         task_group_name: dep_task_name,
-                                        package_path: package_graph[dep_package_node_index]
+                                        is_builtin: false,
+                                        config_path: package_graph[dep_package_node_index]
                                             .path
                                             .clone()
                                             .into(),
@@ -486,7 +490,6 @@ impl Workspace {
                             package_info,
                             script_name.into(),
                             if is_last { None } else { Some(index) },
-                            Arc::default(),
                             base_dir,
                         )?;
                         let task_id = resolved_task.id();
@@ -503,7 +506,6 @@ impl Workspace {
                         package_info,
                         script_name.into(),
                         None,
-                        Arc::default(),
                         base_dir,
                     )?;
                     task_graph_builder.add_task_with_deps(resolved_task, HashSet::default())?;
@@ -550,7 +552,7 @@ impl Workspace {
 
         // Add topological dependencies
         for (task_group_id, current_tasks) in &task_ids_by_task_group_id {
-            let package_path = task_group_id.package_path.as_relative_path();
+            let package_path = task_group_id.config_path.as_relative_path();
             let task_group_name = &task_group_id.task_group_name;
             // Find the FIRST subtask of the current package (or the only task if no subtasks)
             let first_current_task = current_tasks.first().map(|(task_id, _)| task_id);
@@ -569,8 +571,9 @@ impl Workspace {
                     let mut additional_deps = Vec::new();
                     for dep_package_path in transitive_deps {
                         if let Some(dep_tasks) = task_ids_by_task_group_id.get(&TaskGroupId {
+                            is_builtin: false,
                             task_group_name: task_group_name.clone(),
-                            package_path: dep_package_path,
+                            config_path: dep_package_path,
                         }) {
                             // Find the LAST subtask of the dependency (highest order)
                             if let Some((last_dep_task, _)) = dep_tasks.last() {
