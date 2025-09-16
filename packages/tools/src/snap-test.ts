@@ -48,11 +48,14 @@ async function runTestCase(name: string) {
     ...steps.env,
     // Indicate CLI is running in test mode
     VITE_PLUS_CLI_TEST: '1',
+    NO_COLOR: 'true',
+    // set CI=true make sure snap-tests are stable on GitHub Actions
+    CI: 'true',
   };
   env['PATH'] = [
-    ...env['PATH']!.split(path.delimiter),
     // Extend PATH to include the package's bin directory
-    path.resolve('bin')
+    path.resolve('bin'),
+    ...env['PATH']!.split(path.delimiter),
   ].join(path.delimiter);
 
   const newSnap: string[] = [];

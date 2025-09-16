@@ -177,6 +177,7 @@ const DEFAULT_PASSTHROUGH_ENVS: &[&str] = &[
     "TERM_PROGRAM",
     "DISPLAY",
     "FORCE_COLOR",
+    "NO_COLOR",
     // Temporary directories
     "TMP",
     "TEMP",
@@ -274,6 +275,7 @@ impl TaskEnvs {
         // This enables color output in subprocesses when color is supported
         // TODO: will remove this temporarily until we have a better solution
         if !all_envs.contains_key("FORCE_COLOR")
+            && !all_envs.contains_key("NO_COLOR")
             && let Some(support) = on(Stream::Stdout)
         {
             let force_color_value = if support.has_16m {
@@ -526,6 +528,23 @@ mod tests {
         // Clean up
         unsafe {
             std::env::remove_var("FORCE_COLOR");
+        }
+
+        // Test when NO_COLOR is already set - should not be overridden
+        unsafe {
+            std::env::set_var("NO_COLOR", "1");
+        }
+
+        let result3 = TaskEnvs::resolve(base_dir, &resolved_task_config).unwrap();
+        assert!(result3.all_envs.contains_key("NO_COLOR"));
+        let no_color_value = result3.all_envs.get("NO_COLOR").unwrap();
+        assert_eq!(no_color_value.to_str().unwrap(), "1");
+        // FORCE_COLOR should not automatically added since NO_COLOR is set
+        assert!(!result3.all_envs.contains_key("FORCE_COLOR"));
+
+        // Clean up
+        unsafe {
+            std::env::remove_var("NO_COLOR");
         }
     }
 

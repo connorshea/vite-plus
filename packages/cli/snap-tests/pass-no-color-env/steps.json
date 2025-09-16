@@ -1,0 +1,9 @@
+{
+  "env": {
+    "VITE_DISABLE_AUTO_INSTALL": "1"
+  },
+  "commands": [
+    "NO_COLOR=1 vite-plus run check -- --foo # get NO_COLOR=1 from env",
+    "NO_COLOR=2 vite-plus run check -- --bar # get NO_COLOR=2 from env"
+  ]
+}
