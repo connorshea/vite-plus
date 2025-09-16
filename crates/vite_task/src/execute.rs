@@ -539,7 +539,7 @@ mod tests {
         assert!(result3.all_envs.contains_key("NO_COLOR"));
         let no_color_value = result3.all_envs.get("NO_COLOR").unwrap();
         assert_eq!(no_color_value.to_str().unwrap(), "1");
-        // FORCE_COLOR should not automatically added since NO_COLOR is set
+        // FORCE_COLOR should not be automatically added since NO_COLOR is set
         assert!(!result3.all_envs.contains_key("FORCE_COLOR"));
 
         // Clean up
