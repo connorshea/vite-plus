@@ -8,6 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow;
 use bincode::{Decode, Encode};
 use fspy::{AccessMode, Spy, TrackedChild};
 use futures_util::future::{try_join3, try_join4};
@@ -16,7 +17,7 @@ use sha2::{Digest, Sha256};
 use supports_color::{Stream, on};
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use vite_glob::GlobPatternSet;
-use vite_path::{AbsolutePath, RelativePathBuf};
+use vite_path::{AbsolutePath, AbsolutePathBuf, RelativePathBuf};
 use vite_str::Str;
 use wax::Glob;
 
@@ -163,6 +164,7 @@ const DEFAULT_PASSTHROUGH_ENVS: &[&str] = &[
     "SHELL",
     "PWD",
     "PATH",
+    "INIT_CWD",
     // CI/CD environments
     "CI",
     // Node.js specific
@@ -300,6 +302,13 @@ impl TaskEnvs {
         // This prevents nested auto-install execution
         all_envs.insert("VITE_TASK_EXECUTION_ENV".into(), Arc::<OsStr>::from(OsStr::new("1")));
 
+        // Add INIT_CWD to hold the original working directory where vite was invoked
+        if let Ok(init_cwd_guard) = INIT_CWD.lock() {
+            if let Some(init_cwd) = init_cwd_guard.as_ref() {
+                all_envs.insert("INIT_CWD".into(), Arc::<OsStr>::from(init_cwd.as_path().as_os_str()));
+            }
+        }
+
         // Add node_modules/.bin to PATH
         let env_path =
             all_envs.entry("PATH".into()).or_insert_with(|| Arc::<OsStr>::from(OsStr::new("")));
@@ -319,6 +328,19 @@ impl TaskEnvs {
 
 pub static CURRENT_EXECUTION_ID: LazyLock<Option<String>> =
     LazyLock::new(|| std::env::var("VITE_TASK_EXECUTION_ID").ok());
+
+pub static INIT_CWD: LazyLock<Mutex<Option<AbsolutePathBuf>>> = 
+    LazyLock::new(|| Mutex::new(None));
+
+/// Set the initial working directory for INIT_CWD environment variable
+pub fn set_init_cwd(cwd: AbsolutePathBuf) -> Result<(), Error> {
+    if let Ok(mut init_cwd_guard) = INIT_CWD.lock() {
+        *init_cwd_guard = Some(cwd);
+        Ok(())
+    } else {
+        Err(Error::AnyhowError(anyhow::anyhow!("Failed to acquire INIT_CWD lock")))
+    }
+}
 
 pub static EXECUTION_SUMMARY_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     std::env::var("VITE_TASK_EXECUTION_DIR")
@@ -872,6 +894,53 @@ mod tests {
             std::env::remove_var("VSCODE_VAR");
             std::env::remove_var("app1_name");
             std::env::remove_var("app1_name");
+        }
+    }
+
+    #[test]
+    fn test_init_cwd_environment_variable() {
+        use crate::config::{TaskCommand, TaskConfig};
+
+        // Create a simple task config for testing
+        let task_config = TaskConfig {
+            command: TaskCommand::ShellScript("echo hello".into()),
+            cwd: RelativePathBuf::default(),
+            cacheable: true,
+            inputs: HashSet::new(),
+            envs: HashSet::new(),
+            pass_through_envs: HashSet::new(),
+        };
+
+        let resolved_task_config =
+            ResolvedTaskConfig { config_dir: RelativePathBuf::default(), config: task_config };
+
+        let base_dir = if cfg!(windows) {
+            AbsolutePath::new("C:\\workspace").unwrap()
+        } else {
+            AbsolutePath::new("/workspace").unwrap()
+        };
+
+        // Test without INIT_CWD set
+        let result_without_init = TaskEnvs::resolve(base_dir, &resolved_task_config).unwrap();
+        assert!(!result_without_init.all_envs.contains_key("INIT_CWD"));
+
+        // Set INIT_CWD
+        let test_init_cwd = if cfg!(windows) {
+            AbsolutePathBuf::new("C:\\original\\path".into()).unwrap()
+        } else {
+            AbsolutePathBuf::new("/original/path".into()).unwrap()
+        };
+        set_init_cwd(test_init_cwd.clone()).unwrap();
+
+        // Test with INIT_CWD set
+        let result_with_init = TaskEnvs::resolve(base_dir, &resolved_task_config).unwrap();
+        assert!(result_with_init.all_envs.contains_key("INIT_CWD"));
+        let init_cwd_value = result_with_init.all_envs.get("INIT_CWD").unwrap();
+        assert_eq!(init_cwd_value.as_ref(), test_init_cwd.as_path().as_os_str());
+
+        // Clean up - reset INIT_CWD to None
+        if let Ok(mut init_cwd_guard) = INIT_CWD.lock() {
+            *init_cwd_guard = None;
         }
     }
 }

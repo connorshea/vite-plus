@@ -31,7 +31,7 @@ use vite_str::Str;
 pub use crate::config::Workspace;
 use crate::{
     cache::TaskCache,
-    execute::{CURRENT_EXECUTION_ID, EXECUTION_SUMMARY_DIR},
+    execute::{CURRENT_EXECUTION_ID, EXECUTION_SUMMARY_DIR, set_init_cwd},
     fmt::FmtConfig,
     lint::LintConfig,
     schedule::{ExecutionPlan, ExecutionStatus, ExecutionSummary},
@@ -285,6 +285,9 @@ pub async fn main<
         >,
     >,
 ) -> Result<std::process::ExitStatus, Error> {
+    // Set the initial working directory for INIT_CWD environment variable
+    set_init_cwd(cwd.clone())?;
+
     // Auto-install dependencies if needed, but skip for install command itself, or if `VITE_DISABLE_AUTO_INSTALL=1` is set.
     if !matches!(args.commands, Commands::Install { .. })
         && std::env::var_os("VITE_DISABLE_AUTO_INSTALL") != Some("1".into())
