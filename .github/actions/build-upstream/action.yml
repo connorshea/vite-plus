@@ -4,6 +4,10 @@ inputs:
   target:
     description: 'The target platform'
     required: true
+  skip-cache:
+    description: 'Skip NAPI binding cache (for release builds)'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -25,6 +29,7 @@ runs:
     # Cache only NAPI bindings (the slow part, especially on Windows)
     - name: Restore NAPI binding cache
       id: cache-restore
+      if: inputs.skip-cache != 'true'
       uses: actions/cache/restore@94b89442628ad1d101e352b7ee38f30e1bef108e # v5
       with:
         path: |
@@ -80,7 +85,7 @@ runs:
         DEBUG: napi:*
 
     - name: Save NAPI binding cache
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+      if: inputs.skip-cache != 'true' && steps.cache-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@94b89442628ad1d101e352b7ee38f30e1bef108e # v5
       with:
         path: |
