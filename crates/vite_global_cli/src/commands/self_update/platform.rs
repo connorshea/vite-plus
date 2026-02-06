@@ -7,7 +7,7 @@ use crate::error::Error;
 
 /// Detect the current platform suffix for npm package naming.
 ///
-/// Returns strings like `darwin-arm64`, `linux-x64-gnu`, `linux-arm64-musl`, `win32-x64`.
+/// Returns strings like `darwin-arm64`, `linux-x64-gnu`, `linux-arm64-musl`, `win32-x64-msvc`.
 pub fn detect_platform_suffix() -> Result<String, Error> {
     let os_name = if cfg!(target_os = "macos") {
         "darwin"
@@ -34,6 +34,8 @@ pub fn detect_platform_suffix() -> Result<String, Error> {
     if os_name == "linux" {
         let libc = if cfg!(target_env = "musl") { "musl" } else { "gnu" };
         Ok(format!("{os_name}-{arch_name}-{libc}"))
+    } else if os_name == "win32" {
+        Ok(format!("{os_name}-{arch_name}-msvc"))
     } else {
         Ok(format!("{os_name}-{arch_name}"))
     }
@@ -68,6 +70,6 @@ mod tests {
         assert_eq!(suffix, "linux-arm64-gnu");
 
         #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-        assert_eq!(suffix, "win32-x64");
+        assert_eq!(suffix, "win32-x64-msvc");
     }
 }

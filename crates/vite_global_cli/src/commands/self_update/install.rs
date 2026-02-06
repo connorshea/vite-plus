@@ -330,12 +330,15 @@ pub async fn refresh_shims(install_dir: &AbsolutePath) -> Result<(), Error> {
 
 /// Clean up old version directories, keeping at most `max_keep` versions.
 ///
-/// Sorts by semver (newest first) and removes the oldest beyond the limit.
+/// Sorts by creation time (newest first, matching install.sh behavior) and removes
+/// the oldest beyond the limit. Protected versions are never removed, even if they
+/// fall outside the keep limit (e.g., the active version after a downgrade).
 pub async fn cleanup_old_versions(
     install_dir: &AbsolutePath,
     max_keep: usize,
+    protected_versions: &[&str],
 ) -> Result<(), Error> {
-    let mut versions: Vec<(node_semver::Version, AbsolutePathBuf)> = Vec::new();
+    let mut versions: Vec<(std::time::SystemTime, AbsolutePathBuf)> = Vec::new();
 
     let mut entries = tokio::fs::read_dir(install_dir).await?;
     while let Some(entry) = entries.next_entry().await? {
@@ -343,21 +346,31 @@ pub async fn cleanup_old_versions(
         let name_str = name.to_string_lossy();
 
         // Only consider entries that parse as semver
-        if let Ok(ver) = node_semver::Version::parse(&name_str) {
+        if node_semver::Version::parse(&name_str).is_ok() {
+            let metadata = entry.metadata().await?;
+            // Use creation time (birth time), fallback to modified time
+            let time = metadata.created().unwrap_or_else(|_| {
+                metadata.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+            });
             let path = AbsolutePathBuf::new(entry.path()).ok_or_else(|| {
                 Error::SelfUpdate(
                     format!("Invalid absolute path: {}", entry.path().display()).into(),
                 )
             })?;
-            versions.push((ver, path));
+            versions.push((time, path));
         }
     }
 
-    // Sort newest first
+    // Sort newest first (by creation time, matching install.sh)
     versions.sort_by(|a, b| b.0.cmp(&a.0));
 
-    // Remove versions beyond the keep limit
-    for (_ver, path) in versions.into_iter().skip(max_keep) {
+    // Remove versions beyond the keep limit, but never remove protected versions
+    for (_time, path) in versions.into_iter().skip(max_keep) {
+        let name = path.as_path().file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if protected_versions.contains(&name) {
+            tracing::debug!("Skipping protected version: {}", name);
+            continue;
+        }
         tracing::debug!("Cleaning up old version: {}", path.as_path().display());
         if let Err(e) = tokio::fs::remove_dir_all(&path).await {
             tracing::warn!("Failed to remove {}: {}", path.as_path().display(), e);
@@ -404,5 +417,77 @@ mod tests {
     fn test_is_safe_tar_path_absolute() {
         assert!(!is_safe_tar_path(Path::new("/etc/passwd")));
         assert!(!is_safe_tar_path(Path::new("/usr/bin/vp")));
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_preserves_active_downgraded_version() {
+        let temp = tempfile::tempdir().unwrap();
+        let install_dir = AbsolutePathBuf::new(temp.path().to_path_buf()).unwrap();
+
+        // Create 7 version directories with staggered creation times.
+        // Simulate: installed 0.1-0.7 in order, then rolled back to 0.2.0
+        for v in ["0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0"] {
+            tokio::fs::create_dir(install_dir.join(v)).await.unwrap();
+            // Small delay to ensure distinct creation times
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+
+        // Simulate rollback: current points to 0.2.0 (low semver rank)
+        #[cfg(unix)]
+        tokio::fs::symlink("0.2.0", install_dir.join("current")).await.unwrap();
+
+        // Cleanup keeping top 5, with 0.2.0 protected (the active version)
+        cleanup_old_versions(&install_dir, 5, &["0.2.0"]).await.unwrap();
+
+        // 0.2.0 is the active version — it MUST survive cleanup
+        assert!(
+            tokio::fs::try_exists(install_dir.join("0.2.0")).await.unwrap(),
+            "Active version 0.2.0 was deleted by cleanup"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_sorts_by_creation_time_not_semver() {
+        let temp = tempfile::tempdir().unwrap();
+        let install_dir = AbsolutePathBuf::new(temp.path().to_path_buf()).unwrap();
+
+        // Create versions in non-semver order with creation times:
+        // 0.5.0 (oldest), 0.1.0, 0.3.0, 0.7.0, 0.2.0, 0.6.0 (newest)
+        for v in ["0.5.0", "0.1.0", "0.3.0", "0.7.0", "0.2.0", "0.6.0"] {
+            tokio::fs::create_dir(install_dir.join(v)).await.unwrap();
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+
+        // Keep top 4 by creation time → keep 0.6.0, 0.2.0, 0.7.0, 0.3.0
+        // Remove 0.1.0 and 0.5.0 (oldest by creation time)
+        cleanup_old_versions(&install_dir, 4, &[]).await.unwrap();
+
+        // The 4 newest by creation time should survive
+        assert!(tokio::fs::try_exists(install_dir.join("0.6.0")).await.unwrap());
+        assert!(tokio::fs::try_exists(install_dir.join("0.2.0")).await.unwrap());
+        assert!(tokio::fs::try_exists(install_dir.join("0.7.0")).await.unwrap());
+        assert!(tokio::fs::try_exists(install_dir.join("0.3.0")).await.unwrap());
+
+        // The 2 oldest by creation time should be removed
+        assert!(
+            !tokio::fs::try_exists(install_dir.join("0.5.0")).await.unwrap(),
+            "0.5.0 (oldest by creation time) should have been removed"
+        );
+        assert!(
+            !tokio::fs::try_exists(install_dir.join("0.1.0")).await.unwrap(),
+            "0.1.0 (second oldest by creation time) should have been removed"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_old_versions_with_nonexistent_dir() {
+        // Verifies that cleanup_old_versions propagates errors on non-existent dir.
+        // In the real flow, such errors from post-swap operations should be non-fatal.
+        let non_existent = AbsolutePathBuf::new(std::path::PathBuf::from(
+            "/tmp/non-existent-self-update-test-dir",
+        ))
+        .unwrap();
+        let result = cleanup_old_versions(&non_existent, 5, &[]).await;
+        assert!(result.is_err(), "cleanup_old_versions should error on non-existent dir");
     }
 }

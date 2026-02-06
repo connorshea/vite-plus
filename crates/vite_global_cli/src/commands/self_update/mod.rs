@@ -186,14 +186,22 @@ async fn install_platform_and_main(
     let previous_version = install::save_previous_version(install_dir).await?;
     tracing::debug!("Previous version: {:?}", previous_version);
 
-    // Swap current link
+    // Swap current link — POINT OF NO RETURN
     install::swap_current_link(install_dir, new_version).await?;
 
-    // Refresh shims
-    install::refresh_shims(install_dir).await?;
+    // Post-swap operations: non-fatal (the update already succeeded)
+    if let Err(e) = install::refresh_shims(install_dir).await {
+        eprintln!("warn: Shim refresh failed (non-fatal): {e}");
+    }
 
-    // Cleanup old versions
-    install::cleanup_old_versions(install_dir, MAX_VERSIONS_KEEP).await?;
+    let mut protected = vec![new_version];
+    if let Some(ref prev) = previous_version {
+        protected.push(prev.as_str());
+    }
+    if let Err(e) = install::cleanup_old_versions(install_dir, MAX_VERSIONS_KEEP, &protected).await
+    {
+        eprintln!("warn: Old version cleanup failed (non-fatal): {e}");
+    }
 
     if !silent {
         println!(

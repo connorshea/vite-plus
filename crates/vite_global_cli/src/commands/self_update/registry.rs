@@ -106,4 +106,50 @@ mod tests {
         let name = format!("{PLATFORM_PACKAGE_SCOPE}/{MAIN_PACKAGE_NAME}-{suffix}");
         assert_eq!(name, "@voidzero-dev/vite-plus-cli-darwin-arm64");
     }
+
+    #[test]
+    fn test_all_platform_suffixes_match_published_packages() {
+        // These are the actual published optionalDependencies keys
+        // (from packages/global/publish-native-addons.ts RUST_TARGETS keys)
+        let published_suffixes = [
+            "darwin-arm64",
+            "darwin-x64",
+            "linux-arm64-gnu",
+            "linux-x64-gnu",
+            "win32-arm64-msvc",
+            "win32-x64-msvc",
+        ];
+
+        let published_deps: HashMap<String, String> = published_suffixes
+            .iter()
+            .map(|s| {
+                (format!("{PLATFORM_PACKAGE_SCOPE}/{MAIN_PACKAGE_NAME}-{s}"), "0.1.0".to_string())
+            })
+            .collect();
+
+        // All known platform suffixes that detect_platform_suffix() can return
+        let detection_suffixes = [
+            "darwin-arm64",
+            "darwin-x64",
+            "linux-arm64-gnu",
+            "linux-x64-gnu",
+            "linux-arm64-musl",
+            "linux-x64-musl",
+            "win32-arm64-msvc",
+            "win32-x64-msvc",
+        ];
+
+        for suffix in &detection_suffixes {
+            let package_name = format!("{PLATFORM_PACKAGE_SCOPE}/{MAIN_PACKAGE_NAME}-{suffix}");
+            // musl variants are not published, so skip them
+            if suffix.contains("musl") {
+                continue;
+            }
+            assert!(
+                published_deps.contains_key(&package_name),
+                "Platform suffix '{suffix}' produces package name '{package_name}' \
+                 which does not match any published package"
+            );
+        }
+    }
 }

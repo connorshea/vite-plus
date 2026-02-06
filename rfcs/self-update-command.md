@@ -160,8 +160,8 @@ The self-update command is implemented entirely in Rust within the `vite_global_
 │  5. Extract to ~/.vite-plus/{version}/          │
 │  6. Install production dependencies             │
 │  7. Atomic swap: current → {version}            │
-│  8. Refresh shims (vp env setup --refresh)      │
-│  9. Cleanup old versions (keep 5)               │
+│  8. Refresh shims (non-fatal)                   │
+│  9. Cleanup old versions (non-fatal, keep 5)    │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -298,10 +298,12 @@ Key differences on Windows:
 - `bin/vp` is a `.cmd` wrapper (not a symlink), so it doesn't need updating during self-update
 - This matches the existing `install.ps1` behavior exactly
 
-#### Step 6: Post-Update
+#### Step 6: Post-Update (Non-Fatal)
 
-1. Refresh shims: Run the equivalent of `vp env setup --refresh` to ensure node/npm/npx shims point to the new version
-2. Cleanup: Remove old version directories, keeping the 5 most recent
+After the symlink swap (the **point of no return**), post-update operations are treated as non-fatal. Errors are printed to stderr as warnings but do not trigger the outer error handler (which would delete the now-active version directory).
+
+1. **Refresh shims**: Run the equivalent of `vp env setup --refresh` to ensure node/npm/npx shims point to the new version. If this fails, the user can run it manually.
+2. **Cleanup old versions**: Remove old version directories, keeping the 5 most recent by **creation time** (matching `install.sh` behavior). The new version and the previous version are always protected from cleanup, even if they fall outside the top 5 (e.g., after a downgrade via `--rollback`).
 
 #### Step 7: Running Binary Consideration
 
@@ -348,7 +350,7 @@ For `--rollback`:
 | Permission denied               | Report with suggestion to check directory ownership           |
 | Registry returns error          | Parse npm error JSON, show human-readable message             |
 
-Key principle: **The `current` symlink is only swapped after all steps succeed.** If any step fails, the existing installation is untouched.
+Key principle: **The `current` symlink is only swapped after all pre-swap steps succeed.** If any pre-swap step fails, the existing installation is untouched. Post-swap operations (shim refresh, old version cleanup) are non-fatal — their errors are printed to stderr as warnings but do not roll back the update.
 
 ### File Structure
 
@@ -390,6 +392,8 @@ fn detect_platform() -> Result<String, Error> {
     if os_name == "linux" {
         let libc = detect_libc(); // "gnu" or "musl"
         Ok(format!("{os_name}-{arch_name}-{libc}"))
+    } else if os_name == "win32" {
+        Ok(format!("{os_name}-{arch_name}-msvc"))
     } else {
         Ok(format!("{os_name}-{arch_name}"))
     }
@@ -499,13 +503,14 @@ SelfUpdate {
 
 ### 5. Keep 5 Versions for Rollback
 
-**Decision**: Maintain the same cleanup policy as `install.sh` (keep 5 most recent versions).
+**Decision**: Maintain the same cleanup policy as `install.sh` (keep 5 most recent versions by creation time, with protected versions).
 
 **Rationale**:
 
-- Consistent with existing behavior
+- Consistent with existing `install.sh` behavior (sorts by creation time, not semver)
 - Provides rollback safety net without unbounded disk usage
 - Each version is ~20-30MB, so 5 versions is ~100-150MB total
+- The active version and previous version are always protected from cleanup, preventing accidental deletion after a downgrade
 
 ## Implementation Phases
 
