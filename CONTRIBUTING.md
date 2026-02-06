@@ -38,7 +38,7 @@ vp-dev --version
 
 This installs the CLI to `~/.vite-plus-dev` (separate from the release version at `~/.vite-plus`) and creates a `vp-dev` wrapper script that sets the correct `VITE_PLUS_HOME` environment variable.
 
-Note: In CI, `pnpm bootstrap-cli:ci` installs `vp` (without the wrapper) to the same `~/.vite-plus-dev` directory.
+Note: In CI, `pnpm bootstrap-cli:ci` installs `vp` to `~/.vite-plus`, matching the real user environment.
 
 ## Workflow for build and test
 

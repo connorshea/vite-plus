@@ -77,8 +77,9 @@ export function installGlobalCli() {
 
   try {
     // Set up environment for install script
-    // Both vp and vp-dev use ~/.vite-plus-dev to avoid conflicting with release version
-    const installDir = path.join(os.homedir(), '.vite-plus-dev');
+    // vp uses ~/.vite-plus (matches real user environment, used in CI)
+    // vp-dev uses ~/.vite-plus-dev (avoids conflicting with release version during local dev)
+    const installDir = path.join(os.homedir(), binName === 'vp' ? '.vite-plus' : '.vite-plus-dev');
 
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
@@ -122,9 +123,9 @@ export function installGlobalCli() {
         }
       }
       // For 'vp', bin/vp.cmd is already correct from install.ps1
-    } else {
-      // Unix: Rename vp -> vp-raw, then create a wrapper at vp
-      // The wrapper sets VITE_PLUS_HOME and VITE_PLUS_SHIM_TOOL for shim detection
+    } else if (binName === 'vp-dev') {
+      // Unix vp-dev: Rename vp -> vp-raw, then create a wrapper at vp
+      // The wrapper sets VITE_PLUS_HOME to ~/.vite-plus-dev (overriding the default)
       const vpBinary = path.join(currentBinDir, 'vp');
       const vpRawBinary = path.join(currentBinDir, 'vp-raw');
 
@@ -150,24 +151,21 @@ exec "$VITE_PLUS_HOME/current/bin/vp-raw" "$@"
       chmodSync(vpWrapperPath, 0o755);
       console.log(`Created wrapper: ${vpWrapperPath}`);
 
-      // On Unix, create shell script wrappers
-      if (binName === 'vp-dev') {
-        // Remove the vp symlink to avoid confusion
-        rmSync(path.join(binDir, 'vp'), { force: true });
+      // Remove the vp symlink in bin/ to avoid confusion
+      rmSync(path.join(binDir, 'vp'), { force: true });
 
-        // Create vp-dev wrapper that points to current/bin/vp (the wrapper)
-        const wrapperPath = path.join(binDir, 'vp-dev');
-        const wrapperContent = `#!/bin/sh
+      // Create vp-dev wrapper that points to current/bin/vp (the wrapper)
+      const wrapperPath = path.join(binDir, 'vp-dev');
+      const wrapperContent = `#!/bin/sh
 export VITE_PLUS_HOME="${installDir}"
 exec "$VITE_PLUS_HOME/current/bin/vp" "$@"
 `;
-        writeFileSync(wrapperPath, wrapperContent);
-        chmodSync(wrapperPath, 0o755);
-        console.log(`\nCreated wrapper script: ${wrapperPath}`);
-      }
-      // For 'vp' on Unix, install.sh already creates the symlink to ../current/bin/vp
-      // which now points to the wrapper script (which calls vp-raw)
+      writeFileSync(wrapperPath, wrapperContent);
+      chmodSync(wrapperPath, 0o755);
+      console.log(`\nCreated wrapper script: ${wrapperPath}`);
     }
+    // For 'vp' on Unix, install.sh already creates the symlink to ../current/bin/vp
+    // which points directly to the real binary (no wrapper needed)
 
     // Patch env files for vp-dev: the shell function wrappers created by `vp env setup`
     // define vp() but in dev mode the binary is vp-dev, so we rename the functions

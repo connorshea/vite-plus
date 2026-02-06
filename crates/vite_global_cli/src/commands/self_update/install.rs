@@ -272,31 +272,16 @@ pub async fn swap_current_link(install_dir: &AbsolutePath, version: &str) -> Res
     #[cfg(windows)]
     {
         // Windows: junction swap (not atomic)
-        use std::process::Command;
-
-        // Remove existing junction (use symlink_metadata to detect broken junctions too)
-        if std::fs::symlink_metadata(current_link.as_path()).is_ok() {
-            let status = Command::new("cmd")
-                .args(["/c", "rmdir", &current_link.as_path().display().to_string()])
-                .status()?;
-            if !status.success() {
-                return Err(Error::SelfUpdate("Failed to remove existing junction".into()));
-            }
+        // Uses the `junction` crate instead of cmd.exe to avoid path parsing issues
+        // where Unix-style paths like /c/Users/... get interpreted as switches.
+        if junction::exists(&current_link).unwrap_or(false) {
+            junction::delete(&current_link).map_err(|e| {
+                Error::SelfUpdate(format!("Failed to remove existing junction: {e}").into())
+            })?;
         }
 
-        // Create new junction
-        let status = Command::new("cmd")
-            .args([
-                "/c",
-                "mklink",
-                "/J",
-                &current_link.as_path().display().to_string(),
-                &version_dir.as_path().display().to_string(),
-            ])
-            .status()?;
-        if !status.success() {
-            return Err(Error::SelfUpdate("Failed to create junction".into()));
-        }
+        junction::create(&version_dir, &current_link)
+            .map_err(|e| Error::SelfUpdate(format!("Failed to create junction: {e}").into()))?;
     }
 
     tracing::debug!("Swapped current → {}", version);

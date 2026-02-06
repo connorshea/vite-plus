@@ -135,7 +135,7 @@ jobs:
       - name: Build CLI
         run: |
           pnpm bootstrap-cli:ci
-          echo "$HOME/.vite-plus-dev/bin" >> $GITHUB_PATH
+          echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
 
       - name: Print help for built-in commands
         run: |
@@ -198,9 +198,9 @@ jobs:
         run: |
           pnpm bootstrap-cli:ci
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "$USERPROFILE\.vite-plus-dev\bin" >> $GITHUB_PATH
+            echo "$USERPROFILE\.vite-plus\bin" >> $GITHUB_PATH
           else
-            echo "$HOME/.vite-plus-dev/bin" >> $GITHUB_PATH
+            echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
           fi
 
       - name: Verify CLI installation
@@ -239,16 +239,16 @@ jobs:
           where.exe tsc
 
           # Test 2: Verify the package was installed correctly
-          Get-ChildItem "$env:USERPROFILE\.vite-plus-dev\packages\typescript\"
-          Get-ChildItem "$env:USERPROFILE\.vite-plus-dev\bin\"
+          Get-ChildItem "$env:USERPROFILE\.vite-plus\packages\typescript\"
+          Get-ChildItem "$env:USERPROFILE\.vite-plus\bin\"
 
           # Test 3: Uninstall
           vp uninstall -g typescript
 
           # Test 4: Verify uninstall removed shim
           Write-Host "Checking bin dir after uninstall:"
-          Get-ChildItem "$env:USERPROFILE\.vite-plus-dev\bin\"
-          $shimPath = "$env:USERPROFILE\.vite-plus-dev\bin\tsc.cmd"
+          Get-ChildItem "$env:USERPROFILE\.vite-plus\bin\"
+          $shimPath = "$env:USERPROFILE\.vite-plus\bin\tsc.cmd"
           if (Test-Path $shimPath) {
             Write-Error "tsc shim file still exists at $shimPath"
             exit 1
@@ -285,23 +285,23 @@ jobs:
           where.exe tsc
 
           REM Test 2: Verify the package was installed correctly
-          dir "%USERPROFILE%\.vite-plus-dev\packages\typescript\"
-          dir "%USERPROFILE%\.vite-plus-dev\bin\"
+          dir "%USERPROFILE%\.vite-plus\packages\typescript\"
+          dir "%USERPROFILE%\.vite-plus\bin\"
 
           REM Test 3: Uninstall
           vp uninstall -g typescript
 
           REM Test 4: Verify uninstall removed shim (.cmd wrapper)
           echo Checking bin dir after uninstall:
-          dir "%USERPROFILE%\.vite-plus-dev\bin\"
-          if exist "%USERPROFILE%\.vite-plus-dev\bin\tsc.cmd" (
+          dir "%USERPROFILE%\.vite-plus\bin\"
+          if exist "%USERPROFILE%\.vite-plus\bin\tsc.cmd" (
             echo Error: tsc.cmd shim file still exists
             exit /b 1
           )
           echo tsc.cmd shim removed successfully
 
           REM Test 5: Verify shell script was also removed (for Git Bash)
-          if exist "%USERPROFILE%\.vite-plus-dev\bin\tsc" (
+          if exist "%USERPROFILE%\.vite-plus\bin\tsc" (
             echo Error: tsc shell script still exists
             exit /b 1
           )
@@ -317,8 +317,8 @@ jobs:
       - name: Test global package install (bash)
         run: |
           echo "PATH: $PATH"
-          ls -la ~/.vite-plus-dev/
-          ls -la ~/.vite-plus-dev/bin/
+          ls -la ~/.vite-plus/
+          ls -la ~/.vite-plus/bin/
           which node
           which npm
           which npx
@@ -331,17 +331,17 @@ jobs:
           which tsc
 
           # Test 2: Verify the package was installed correctly
-          ls -la ~/.vite-plus-dev/packages/typescript/
-          ls -la ~/.vite-plus-dev/bin/
+          ls -la ~/.vite-plus/packages/typescript/
+          ls -la ~/.vite-plus/bin/
 
           # Test 3: Uninstall
           vp uninstall -g typescript
 
           # Test 4: Verify uninstall removed shim
           echo "Checking bin dir after uninstall:"
-          ls -la ~/.vite-plus-dev/bin/
-          if [ -f ~/.vite-plus-dev/bin/tsc ]; then
-            echo "Error: tsc shim file still exists at ~/.vite-plus-dev/bin/tsc"
+          ls -la ~/.vite-plus/bin/
+          if [ -f ~/.vite-plus/bin/tsc ]; then
+            echo "Error: tsc shim file still exists at ~/.vite-plus/bin/tsc"
             exit 1
           fi
           echo "tsc shim removed successfully"
@@ -408,9 +408,9 @@ jobs:
         run: |
           pnpm bootstrap-cli:ci
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "$USERPROFILE\.vite-plus-dev\bin" >> $GITHUB_PATH
+            echo "$USERPROFILE\.vite-plus\bin" >> $GITHUB_PATH
           else
-            echo "$HOME/.vite-plus-dev/bin" >> $GITHUB_PATH
+            echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
           fi
 
       - name: Verify CLI installation
@@ -422,7 +422,7 @@ jobs:
         run: |
           # Helper to read the installed CLI version from package.json
           get_cli_version() {
-            node -p "require(require('path').resolve(process.env.USERPROFILE || process.env.HOME, '.vite-plus-dev', 'current', 'package.json')).version"
+            node -p "require(require('path').resolve(process.env.USERPROFILE || process.env.HOME, '.vite-plus', 'current', 'package.json')).version"
           }
 
           # Save initial (dev build) version
@@ -497,7 +497,7 @@ jobs:
       - name: Build CLI
         run: |
           pnpm bootstrap-cli:ci
-          echo "$HOME/.vite-plus-dev/bin" >> $GITHUB_PATH
+          echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
 
       - name: Run local CLI `vite install`
         run: |

@@ -101,7 +101,7 @@ pub mod version;
 // Category D: Environment Management
 pub mod env;
 
-// Category E: Self-Management
+// Self-Management
 pub mod self_update;
 
 // Category C: Local CLI Delegation

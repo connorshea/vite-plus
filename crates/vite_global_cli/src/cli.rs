@@ -590,7 +590,7 @@ pub enum Commands {
     Env(EnvArgs),
 
     // =========================================================================
-    // Category E: Self-Management
+    // Self-Management
     // =========================================================================
     /// Update vp itself to the latest version
     #[command(name = "self-update", visible_alias = "upgrade")]
@@ -1546,7 +1546,7 @@ pub async fn run_command(cwd: AbsolutePathBuf, args: Args) -> Result<ExitStatus,
 
         Commands::Env(args) => commands::env::execute(cwd, args).await,
 
-        // Category E: Self-Management
+        // Self-Management
         Commands::SelfUpdate { version, tag, check, rollback, force, silent, registry } => {
             commands::self_update::execute(commands::self_update::SelfUpdateOptions {
                 version,

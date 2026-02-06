@@ -85,9 +85,16 @@ export async function snapTest() {
     }
   }
 
+  const vitePlusHome = path.join(homedir(), process.env.CI ? '.vite-plus' : '.vite-plus-dev');
+
+  // Remove .previous-version so command-self-update-rollback snap test is stable
+  const previousVersionPath = path.join(vitePlusHome, '.previous-version');
+  if (fs.existsSync(previousVersionPath)) {
+    fs.rmSync(previousVersionPath);
+  }
+
   // Ensure shim mode is "managed" so snap tests use vite-plus managed Node.js
   // instead of the system Node.js (equivalent to running `vp env on`).
-  const vitePlusHome = path.join(homedir(), '.vite-plus-dev');
   const configPath = path.join(vitePlusHome, 'config.json');
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
@@ -181,8 +188,8 @@ async function runTestCase(name: string, tempTmpDir: string, casesDir: string) {
     NO_COLOR: 'true',
     // set CI=true make sure snap-tests are stable on GitHub Actions
     CI: 'true',
-    // Use the dev installation, same as vp-dev
-    VITE_PLUS_HOME: path.join(homedir(), '.vite-plus-dev'),
+    // Use the dev installation (vp-dev) locally, or the real installation (vp) in CI
+    VITE_PLUS_HOME: path.join(homedir(), process.env.CI ? '.vite-plus' : '.vite-plus-dev'),
 
     // A test case can override/unset environment variables above.
     // For example, VITE_PLUS_CLI_TEST/CI can be unset to test the real-world outputs.
