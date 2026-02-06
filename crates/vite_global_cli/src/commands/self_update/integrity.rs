@@ -3,7 +3,6 @@
 //! Verifies SHA-512 integrity using the Subresource Integrity (SRI) format
 //! that npm registries provide: `sha512-{base64}`.
 
-use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest, Sha512};
 
 use crate::error::Error;
@@ -19,7 +18,7 @@ pub fn verify_integrity(data: &[u8], expected_sri: &str) -> Result<(), Error> {
 
     let mut hasher = Sha512::new();
     hasher.update(data);
-    let actual_b64 = STANDARD.encode(hasher.finalize());
+    let actual_b64 = base64_simd::STANDARD.encode_to_string(hasher.finalize());
 
     if actual_b64 != expected_b64 {
         return Err(Error::IntegrityMismatch {
@@ -41,7 +40,7 @@ mod tests {
         let data = b"Hello, World!";
         let mut hasher = Sha512::new();
         hasher.update(data);
-        let hash = STANDARD.encode(hasher.finalize());
+        let hash = base64_simd::STANDARD.encode_to_string(hasher.finalize());
         let sri = format!("sha512-{hash}");
 
         assert!(verify_integrity(data, &sri).is_ok());

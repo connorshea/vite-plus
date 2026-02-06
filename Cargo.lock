@@ -7139,7 +7139,7 @@ dependencies = [
 name = "vite_global_cli"
 version = "0.0.0"
 dependencies = [
- "base64 0.22.1",
+ "base64-simd",
  "chrono",
  "clap",
  "flate2",
