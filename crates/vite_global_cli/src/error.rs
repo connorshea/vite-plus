@@ -51,4 +51,13 @@ pub enum Error {
         "Executable '{bin_name}' is already installed by {existing_package}\n\nPlease remove {existing_package} before installing {new_package}, or use --force to auto-replace"
     )]
     BinaryConflict { bin_name: String, existing_package: String, new_package: String },
+
+    #[error("Self-update error: {0}")]
+    SelfUpdate(Str),
+
+    #[error("Integrity mismatch: expected {expected}, got {actual}")]
+    IntegrityMismatch { expected: Str, actual: Str },
+
+    #[error("Unsupported integrity format: {0} (only sha512 is supported)")]
+    UnsupportedIntegrity(Str),
 }

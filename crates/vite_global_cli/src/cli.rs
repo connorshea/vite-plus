@@ -588,6 +588,40 @@ pub enum Commands {
 
     /// Manage Node.js versions
     Env(EnvArgs),
+
+    // =========================================================================
+    // Category E: Self-Management
+    // =========================================================================
+    /// Update vp itself to the latest version
+    #[command(name = "self-update", visible_alias = "upgrade")]
+    SelfUpdate {
+        /// Target version (e.g., "0.2.0"). Defaults to latest.
+        version: Option<String>,
+
+        /// npm dist-tag to install (default: "latest", also: "test")
+        #[arg(long, default_value = "latest")]
+        tag: String,
+
+        /// Check for updates without installing
+        #[arg(long)]
+        check: bool,
+
+        /// Revert to the previously active version
+        #[arg(long)]
+        rollback: bool,
+
+        /// Force reinstall even if already on the target version
+        #[arg(long)]
+        force: bool,
+
+        /// Suppress output
+        #[arg(long)]
+        silent: bool,
+
+        /// Custom npm registry URL
+        #[arg(long)]
+        registry: Option<String>,
+    },
 }
 
 /// Arguments for the `env` command
@@ -1511,6 +1545,20 @@ pub async fn run_command(cwd: AbsolutePathBuf, args: Args) -> Result<ExitStatus,
         Commands::Cache { args } => commands::delegate::execute(cwd, "cache", &args).await,
 
         Commands::Env(args) => commands::env::execute(cwd, args).await,
+
+        // Category E: Self-Management
+        Commands::SelfUpdate { version, tag, check, rollback, force, silent, registry } => {
+            commands::self_update::execute(commands::self_update::SelfUpdateOptions {
+                version,
+                tag,
+                check,
+                rollback,
+                force,
+                silent,
+                registry,
+            })
+            .await
+        }
     }
 }
 
@@ -1553,6 +1601,9 @@ fn apply_custom_help(cmd: clap::Command) -> clap::Command {
   {bold}new{reset}        Generate a new project
   {bold}run{reset}        Run tasks
   {bold}env{reset}        Manage Node.js versions
+
+{bold_underline}Self-Management:{reset}
+  {bold}self-update, upgrade{reset}            Update vp itself to the latest version
 
 {bold_underline}Package Manager Commands:{reset}
   {bold}install, i{reset}                     Install all dependencies, or add packages if package names are provided

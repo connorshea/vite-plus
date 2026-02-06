@@ -7129,12 +7129,17 @@ dependencies = [
 name = "vite_global_cli"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "clap",
+ "flate2",
+ "node-semver",
  "owo-colors",
  "serde",
  "serde_json",
  "serial_test",
+ "sha2",
+ "tar",
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
