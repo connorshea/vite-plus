@@ -264,6 +264,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           echo PATH: %PATH%
+          dir "%USERPROFILE%\.vite-plus"
           dir "%USERPROFILE%\.vite-plus\bin"
 
           REM test new command

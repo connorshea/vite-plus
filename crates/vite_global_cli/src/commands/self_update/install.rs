@@ -274,12 +274,23 @@ pub async fn swap_current_link(install_dir: &AbsolutePath, version: &str) -> Res
     #[cfg(windows)]
     {
         // Windows: junction swap (not atomic)
-        // Uses the `junction` crate instead of cmd.exe to avoid path parsing issues
-        // where Unix-style paths like /c/Users/... get interpreted as switches.
-        if junction::exists(&current_link).unwrap_or(false) {
-            junction::delete(&current_link).map_err(|e| {
-                Error::SelfUpdate(format!("Failed to remove existing junction: {e}").into())
-            })?;
+        // Remove whatever exists at current_link — could be a junction, symlink, or directory.
+        // We don't rely on junction::exists() since it may not detect junctions created by
+        // cmd /c mklink /J (used by install.ps1).
+        if current_link.as_path().exists() {
+            // std::fs::remove_dir works on junctions/symlinks without removing target contents
+            if let Err(e) = std::fs::remove_dir(&current_link) {
+                tracing::debug!("remove_dir failed ({}), trying junction::delete", e);
+                junction::delete(&current_link).map_err(|e| {
+                    Error::SelfUpdate(
+                        format!(
+                            "Failed to remove existing junction at {}: {e}",
+                            current_link.as_path().display()
+                        )
+                        .into(),
+                    )
+                })?;
+            }
         }
 
         junction::create(&version_dir, &current_link).map_err(|e| {

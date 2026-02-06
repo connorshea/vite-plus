@@ -419,6 +419,7 @@ jobs:
           vp --version
 
       - name: Test self-update
+        shell: bash
         run: |
           # Helper to read the installed CLI version from package.json
           get_cli_version() {
@@ -438,6 +439,8 @@ jobs:
           vp self-update --tag test --force
           vp --version
           vp env doctor
+
+          ls -la ~/.vite-plus/
 
           # Verify version changed after update
           UPDATED_VERSION=$(get_cli_version)
