@@ -11,6 +11,8 @@ export default defineConfig({
     rules: {
       'eslint/no-await-in-loop': 'off',
       'no-console': ['error', { allow: ['error'] }],
+      'typescript/no-unnecessary-boolean-literal-compare': 'off',
+      'typescript/no-unsafe-type-assertion': 'off',
       curly: 'error',
     },
     overrides: [
@@ -36,15 +38,20 @@ export default defineConfig({
         },
       },
     ],
-    ignorePatterns: ['**/snap-tests/**', '**/snap-tests-todo/**'],
+    ignorePatterns: [
+      '**/snap-tests/**',
+      '**/snap-tests-todo/**',
+      'packages/core/rollupLicensePlugin.ts.ts',
+      'packages/core/vite-rolldown.config.ts',
+    ],
   },
   test: {
     exclude: [
+      './ecosystem-ci/**',
+      './rolldown-vite/**',
+      './rolldown/**',
       '**/node_modules/**',
       '**/snap-tests/**',
-      './ecosystem-ci/**',
-      './rolldown/**',
-      './rolldown-vite/**',
       // FIXME: Error: failed to prepare the command for injection: Invalid argument (os error 22)
       'packages/*/binding/__tests__/',
     ],

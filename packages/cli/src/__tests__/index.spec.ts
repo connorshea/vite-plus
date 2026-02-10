@@ -21,14 +21,14 @@ test('should keep vitest exports stable', () => {
 });
 
 test('should support lazy loading of plugins', async () => {
-  const config = await defineConfig({
+  const config = defineConfig({
     lazy: () => Promise.resolve({ plugins: [{ name: 'test' }] }),
   });
   expect(config.plugins?.length).toBe(1);
 });
 
 test('should merge lazy plugins with existing plugins', async () => {
-  const config = await defineConfig({
+  const config = defineConfig({
     plugins: [{ name: 'existing' }],
     lazy: () => Promise.resolve({ plugins: [{ name: 'lazy' }] }),
   });
@@ -38,14 +38,14 @@ test('should merge lazy plugins with existing plugins', async () => {
 });
 
 test('should handle lazy with empty plugins array', async () => {
-  const config = await defineConfig({
+  const config = defineConfig({
     lazy: () => Promise.resolve({ plugins: [] }),
   });
   expect(config.plugins?.length).toBe(0);
 });
 
 test('should handle lazy returning undefined plugins', async () => {
-  const config = await defineConfig({
+  const config = defineConfig({
     lazy: () => Promise.resolve({}),
   });
   expect(config.plugins?.length).toBe(0);
@@ -88,7 +88,7 @@ test('should handle function config with lazy', async () => {
     lazy: () => Promise.resolve({ plugins: [{ name: 'lazy-from-fn' }] }),
   }));
   expect(typeof configFn).toBe('function');
-  const config = await configFn({ command: 'build', mode: 'production' });
+  const config = configFn({ command: 'build', mode: 'production' });
   expect(config.plugins?.length).toBe(1);
   expect((config.plugins?.[0] as { name: string })?.name).toBe('lazy-from-fn');
 });
@@ -98,7 +98,7 @@ test('should handle function config with lazy and existing plugins', async () =>
     plugins: [{ name: 'existing' }],
     lazy: () => Promise.resolve({ plugins: [{ name: 'lazy' }] }),
   }));
-  const config = await configFn({ command: 'build', mode: 'production' });
+  const config = configFn({ command: 'build', mode: 'production' });
   expect(config.plugins?.length).toBe(2);
   expect((config.plugins?.[0] as { name: string })?.name).toBe('existing');
   expect((config.plugins?.[1] as { name: string })?.name).toBe('lazy');
