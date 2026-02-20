@@ -14,7 +14,7 @@ Options:
 
 > vp env use 20.18.0 --no-install # should output export command to stdout
 export VITE_PLUS_NODE_VERSION=20.18.0
-Using Node.js v<semver> (resolved from <semver>)
+vp: Using Node.js v<semver> (from <semver>)
 
 > vp env use --unset # should output unset command to stdout
 unset VITE_PLUS_NODE_VERSION

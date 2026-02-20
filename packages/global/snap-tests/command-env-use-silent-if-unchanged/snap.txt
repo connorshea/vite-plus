@@ -1,0 +1,10 @@
+> vp env use --silent-if-unchanged # first call - should show message
+export VITE_PLUS_NODE_VERSION=20.18.0
+vp: Using Node.js v<semver> (from .node-version)
+
+> VITE_PLUS_NODE_VERSION=20.18.0 vp env use --silent-if-unchanged # same version - should be silent
+export VITE_PLUS_NODE_VERSION=20.18.0
+
+> VITE_PLUS_NODE_VERSION=22.0.0 vp env use --silent-if-unchanged # different version - should show message
+export VITE_PLUS_NODE_VERSION=20.18.0
+vp: Using Node.js v<semver> (from .node-version)

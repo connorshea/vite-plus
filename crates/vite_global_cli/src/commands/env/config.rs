@@ -230,6 +230,15 @@ pub async fn resolve_version(cwd: &AbsolutePath) -> Result<VersionResolution, Er
         });
     }
 
+    resolve_version_from_project(cwd).await
+}
+
+/// Resolve the Node.js version from project files only (`.node-version`, `engines.node`, etc.).
+///
+/// Unlike [`resolve_version`], this skips session overrides (env var and session file).
+/// Use this when the caller IS the session setter (e.g., `vp env use` resolving which
+/// version a project needs, independent of what's currently active).
+pub async fn resolve_version_from_project(cwd: &AbsolutePath) -> Result<VersionResolution, Error> {
     let provider = NodeProvider::new();
 
     // Use shared version resolution with directory walking

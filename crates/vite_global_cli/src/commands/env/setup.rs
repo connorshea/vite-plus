@@ -319,6 +319,23 @@ vp() {
         command vp "$@"
     fi
 }
+
+# Auto-switch Node.js version on directory change
+__vp_use_on_cd() {
+    vp env use --silent-if-unchanged
+}
+if [ -n "${ZSH_VERSION-}" ]; then
+    if [[ ! " ${chpwd_functions[*]-} " == *" __vp_use_on_cd "* ]]; then
+        chpwd_functions+=(__vp_use_on_cd)
+    fi
+else
+    __vpcd() {
+        \cd "$@" || return $?
+        __vp_use_on_cd
+    }
+    alias cd=__vpcd
+fi
+__vp_use_on_cd
 "#
     .replace("__VP_BIN__", &bin_path_ref);
     let env_file = vite_plus_home.join("env");
@@ -344,6 +361,15 @@ function vp
         command vp $argv
     end
 end
+
+# Auto-switch Node.js version on directory change
+function __vp_use_on_cd --on-variable PWD --description 'Auto-switch Node.js version'
+    if status is-command-substitution
+        return
+    end
+    vp env use --silent-if-unchanged
+end
+__vp_use_on_cd
 "#
     .replace("__VP_BIN__", &bin_path_ref);
     let env_fish_file = vite_plus_home.join("env.fish");
@@ -379,6 +405,19 @@ function vp {
         & (Join-Path $__vp_bin "vp.exe") @args
     }
 }
+
+# Auto-switch Node.js version on directory change
+$__vp_original_prompt = $function:prompt
+function prompt {
+    $loc = Get-Location
+    if ($global:__vp_last_dir -ne $loc.Path) {
+        $global:__vp_last_dir = $loc.Path
+        vp env use --silent-if-unchanged
+    }
+    & $__vp_original_prompt
+}
+$global:__vp_last_dir = (Get-Location).Path
+vp env use --silent-if-unchanged
 "#;
 
     // For PowerShell, use the actual absolute path (not $HOME-relative)
@@ -685,6 +724,70 @@ mod tests {
         assert!(
             !ps1_content.contains("__VP_BIN_WIN__"),
             "env.ps1 should not contain __VP_BIN_WIN__ placeholder"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_env_files_posix_contains_cd_hook() {
+        let temp_dir = TempDir::new().unwrap();
+        let home = AbsolutePathBuf::new(temp_dir.path().to_path_buf()).unwrap();
+        let _guard = home_guard(temp_dir.path());
+
+        create_env_files(&home).await.unwrap();
+
+        let env_content = tokio::fs::read_to_string(home.join("env")).await.unwrap();
+
+        // Verify cd hook components
+        assert!(
+            env_content.contains("__vp_use_on_cd"),
+            "env file should contain __vp_use_on_cd function"
+        );
+        assert!(
+            env_content.contains("chpwd_functions"),
+            "env file should use chpwd_functions for zsh"
+        );
+        assert!(env_content.contains("alias cd=__vpcd"), "env file should alias cd for bash");
+    }
+
+    #[tokio::test]
+    async fn test_create_env_files_fish_contains_cd_hook() {
+        let temp_dir = TempDir::new().unwrap();
+        let home = AbsolutePathBuf::new(temp_dir.path().to_path_buf()).unwrap();
+        let _guard = home_guard(temp_dir.path());
+
+        create_env_files(&home).await.unwrap();
+
+        let fish_content = tokio::fs::read_to_string(home.join("env.fish")).await.unwrap();
+
+        // Verify fish cd hook
+        assert!(
+            fish_content.contains("__vp_use_on_cd"),
+            "env.fish should contain __vp_use_on_cd function"
+        );
+        assert!(
+            fish_content.contains("--on-variable PWD"),
+            "env.fish should use --on-variable PWD for cd detection"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_env_files_ps1_contains_cd_hook() {
+        let temp_dir = TempDir::new().unwrap();
+        let home = AbsolutePathBuf::new(temp_dir.path().to_path_buf()).unwrap();
+        let _guard = home_guard(temp_dir.path());
+
+        create_env_files(&home).await.unwrap();
+
+        let ps1_content = tokio::fs::read_to_string(home.join("env.ps1")).await.unwrap();
+
+        // Verify PowerShell cd hook
+        assert!(
+            ps1_content.contains("__vp_last_dir"),
+            "env.ps1 should contain __vp_last_dir for directory change detection"
+        );
+        assert!(
+            ps1_content.contains("--silent-if-unchanged"),
+            "env.ps1 should call vp env use --silent-if-unchanged"
         );
     }
 

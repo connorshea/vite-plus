@@ -98,7 +98,7 @@ pub async fn execute(
         let resolved = config::resolve_version_alias(ver, &provider).await?;
         (resolved, format!("{ver}"))
     } else {
-        let resolution = config::resolve_version(&cwd).await?;
+        let resolution = config::resolve_version_from_project(&cwd).await?;
         let source = resolution.source.clone();
         (resolution.version, source)
     };
@@ -154,7 +154,7 @@ pub async fn execute(
     }
 
     // Status message to stderr (visible to user)
-    eprintln!("Using Node.js v{} (resolved from {})", resolved_version, source_desc);
+    eprintln!("vp: Using Node.js v{} (from {})", resolved_version, source_desc);
 
     Ok(ExitStatus::default())
 }
