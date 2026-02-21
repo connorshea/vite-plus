@@ -48,11 +48,29 @@ function readPackageJsonFromPath(packageJsonPath: string): PackageJson | null {
 
 function resolvePackageJson(packageName: string, baseDir: string): PackageJson | null {
   try {
+    // Try resolving package.json subpath directly
     const packageJsonPath = require.resolve(`${packageName}/package.json`, {
       paths: [baseDir],
     });
     return readPackageJsonFromPath(packageJsonPath);
   } catch {
+    // Fallback for packages with restricted exports that don't expose ./package.json:
+    // resolve the main entry and find package.json relative to it
+    try {
+      const mainPath = require.resolve(packageName, { paths: [baseDir] });
+      // Walk up from the resolved entry to find the package.json
+      let dir = path.dirname(mainPath);
+      while (dir !== path.dirname(dir)) {
+        const pkgPath = path.join(dir, 'package.json');
+        const pkg = readPackageJsonFromPath(pkgPath);
+        if (pkg) {
+          return pkg;
+        }
+        dir = path.dirname(dir);
+      }
+    } catch {
+      // package not found at all
+    }
     return null;
   }
 }
