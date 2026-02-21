@@ -107,13 +107,15 @@ jobs:
           cd packages/core && pnpm pack --pack-destination ../../tmp/tgz && cd ../..
           cd packages/test && pnpm pack --pack-destination ../../tmp/tgz && cd ../..
           cd packages/cli && pnpm pack --pack-destination ../../tmp/tgz && cd ../..
+          # Copy vp binary for e2e-test job (findVpBinary expects it in target/)
+          cp target/${{ matrix.target }}/release/vp tmp/tgz/vp 2>/dev/null || cp target/${{ matrix.target }}/release/vp.exe tmp/tgz/vp.exe 2>/dev/null || true
           ls -la tmp/tgz
 
       - name: Upload tgz artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vite-plus-packages-${{ matrix.os }}
-          path: tmp/tgz/*.tgz
+          path: tmp/tgz/
           retention-days: 1
 
   e2e-test:
@@ -264,6 +266,10 @@ jobs:
       - name: Install vp CLI
         shell: bash
         run: |
+          # Place vp binary where install-global-cli.ts expects it (target/release/)
+          mkdir -p target/release
+          cp tmp/tgz/vp target/release/vp 2>/dev/null || cp tmp/tgz/vp.exe target/release/vp.exe 2>/dev/null || true
+          chmod +x target/release/vp 2>/dev/null || true
           node $GITHUB_WORKSPACE/packages/tools/src/install-global-cli.ts --tgz $GITHUB_WORKSPACE/tmp/tgz/vite-plus-0.0.0.tgz
           echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
 
