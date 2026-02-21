@@ -526,7 +526,7 @@ jobs:
       - name: Run local CLI `vite install`
         run: |
           export PATH=$PWD/node_modules/.bin:$PATH
-          vite -h
+          vp -h
           # Test vite install on various repositories with different package managers
           repos=(
             # pnpm workspace
@@ -549,9 +549,9 @@ jobs:
             fi
             git clone --depth 1 "https://github.com/$repo.git" "$RUNNER_TEMP/$dir_name"
             cd "$RUNNER_TEMP/$dir_name"
-            vite install
+            vp install
             # run again to show install cache increase by time
-            time vite install
+            time vp install
             echo "✓ Successfully installed dependencies for $repo"
             echo ""
           done

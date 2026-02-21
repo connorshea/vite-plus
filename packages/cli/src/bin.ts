@@ -31,11 +31,15 @@ if (args[0] === 'help' && args[1]) {
 const command = args[0];
 
 // Global commands — handled by rolldown-bundled modules in dist/global/
+// These modules only exist after rolldown bundles them, so TS cannot resolve them.
 if (command === 'create') {
+  // @ts-ignore — rolldown output
   await import('./global/create.js');
 } else if (command === 'migrate') {
+  // @ts-ignore — rolldown output
   await import('./global/migrate.js');
 } else if (command === '--version' || command === '-V') {
+  // @ts-ignore — rolldown output
   await import('./global/version.js');
 } else {
   // All other commands — delegate to Rust core via NAPI binding
