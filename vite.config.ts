@@ -46,6 +46,7 @@ export default defineConfig({
     ],
     ignorePatterns: [
       '**/snap-tests/**',
+      '**/snap-tests-global/**',
       '**/snap-tests-todo/**',
       'packages/core/rollupLicensePlugin.ts',
       'packages/core/vite-rolldown.config.ts',
