@@ -6,9 +6,9 @@ import mri from 'mri';
 import colors from 'picocolors';
 import semver from 'semver';
 
-import { PackageManager, type WorkspaceInfo } from '../global-types/index.js';
-import { selectAgentTargetPath, writeAgentInstructions } from '../global-utils/agent.js';
-import { hasVitePlusDependency, readNearestPackageJson } from '../global-utils/package.js';
+import { PackageManager, type WorkspaceInfo } from '../types/index.js';
+import { selectAgentTargetPath, writeAgentInstructions } from '../utils/agent.js';
+import { hasVitePlusDependency, readNearestPackageJson } from '../utils/package.js';
 import {
   cancelAndExit,
   defaultInteractive,
@@ -16,10 +16,10 @@ import {
   runViteInstall,
   selectPackageManager,
   upgradeYarn,
-} from '../global-utils/prompts.js';
-import { accent, getVitePlusHeader, headline, log, muted } from '../global-utils/terminal.js';
-import type { PackageDependencies } from '../global-utils/types.js';
-import { detectWorkspace } from '../global-utils/workspace.js';
+} from '../utils/prompts.js';
+import { accent, getVitePlusHeader, headline, log, muted } from '../utils/terminal.js';
+import type { PackageDependencies } from '../utils/types.js';
+import { detectWorkspace } from '../utils/workspace.js';
 import {
   checkVitestVersion,
   checkViteVersion,

@@ -42,9 +42,9 @@ Options:
 > vp -V # show version
 VITE+ - The Unified Toolchain for the Web
 
-VP VERSIONS:
-  Global:        v<semver>
-  Local:         Not installed
+PACKAGE VERSIONS:
+  Global vite-plus:    v<semver>
+  Local vite-plus:     Not installed
 
 > vp install -h # show install help message
 Install all dependencies, or add packages if package names are provided

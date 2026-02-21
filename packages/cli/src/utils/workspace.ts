@@ -12,7 +12,7 @@ import {
   type WorkspaceInfo,
   type WorkspaceInfoOptional,
   type WorkspacePackage,
-} from '../global-types/index.js';
+} from '../types/index.js';
 import { editJsonFile, readJsonFile } from './json.js';
 import { getScopeFromPackageName } from './package.js';
 import { editYamlFile, readYamlFile } from './yaml.js';

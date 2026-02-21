@@ -10,7 +10,7 @@
 
 import { join } from 'node:path';
 
-import { DEFAULT_ENVS } from './utils.js';
+import { DEFAULT_ENVS } from './utils/constants.js';
 
 /**
  * Resolves the Tsdown binary path and environment variables.

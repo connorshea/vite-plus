@@ -1,7 +1,7 @@
 import * as prompts from '@voidzero-dev/vite-plus-prompts';
 import colors from 'picocolors';
 
-import type { WorkspaceInfo } from '../../global-types/index.js';
+import type { WorkspaceInfo } from '../../types/index.js';
 import {
   type ExecutionResult,
   formatDlxCommand,

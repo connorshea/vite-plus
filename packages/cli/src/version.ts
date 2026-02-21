@@ -3,10 +3,10 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { styleText } from 'node:util';
 
-import { VITE_PLUS_NAME } from './global-utils/constants.js';
-import { detectPackageMetadata } from './global-utils/package.js';
-import { pkgRoot } from './global-utils/path.js';
-import { getVitePlusHeader, headline, log } from './global-utils/terminal.js';
+import { VITE_PLUS_NAME } from './utils/constants.js';
+import { detectPackageMetadata } from './utils/package.js';
+import { pkgRoot } from './utils/path.js';
+import { getVitePlusHeader, headline, log } from './utils/terminal.js';
 
 const require = createRequire(import.meta.url);
 
@@ -98,7 +98,7 @@ function formatToolVersion(tool: ToolVersionSpec, version: string | null): strin
   return `${tool.displayName} ${version ? `v${version}` : `Not found`}`;
 }
 
-const columnWidth = 15;
+const columnWidth = 21;
 const getColumnWidth = (label: string) => Math.max(1, columnWidth - label.length);
 
 /**
@@ -110,12 +110,18 @@ export async function printVersion(cwd: string) {
   const localVersion = localMetadata?.version ?? null;
 
   log((await getVitePlusHeader()) + '\n');
-  log(headline('vp Versions:'));
-  log(`  ${styleText('bold', 'Global:')}${' '.repeat(getColumnWidth('Global:'))}v${globalVersion}`);
+  log(headline('Package Versions:'));
+  log(
+    `  ${styleText('bold', 'Global vite-plus:')}${' '.repeat(getColumnWidth('Global vite-plus:'))}v${globalVersion}`,
+  );
   if (localVersion) {
-    log(`  ${styleText('bold', 'Local:')}${' '.repeat(getColumnWidth('Local:'))}v${localVersion}`);
+    log(
+      `  ${styleText('bold', 'Local vite-plus:')}${' '.repeat(getColumnWidth('Local vite-plus:'))}v${localVersion}`,
+    );
   } else {
-    log(`  ${styleText('bold', 'Local:')}${' '.repeat(getColumnWidth('Local:'))}Not installed`);
+    log(
+      `  ${styleText('bold', 'Local vite-plus:')}${' '.repeat(getColumnWidth('Local vite-plus:'))}Not installed`,
+    );
   }
 
   if (!localMetadata) {

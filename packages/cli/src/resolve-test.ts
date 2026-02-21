@@ -10,7 +10,7 @@
 
 import { dirname, join } from 'node:path';
 
-import { DEFAULT_ENVS, resolve } from './utils.js';
+import { DEFAULT_ENVS, resolve } from './utils/constants.js';
 
 /**
  * Resolves the Vitest binary path and environment variables.

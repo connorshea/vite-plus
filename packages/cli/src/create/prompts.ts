@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as prompts from '@voidzero-dev/vite-plus-prompts';
 import validateNpmPackageName from 'validate-npm-package-name';
 
-import { accent } from '../global-utils/terminal.js';
+import { accent } from '../utils/terminal.js';
 import { getProjectDirFromPackageName } from './utils.js';
 
 export async function promptPackageNameAndTargetDir(

@@ -12,16 +12,16 @@ import {
   rewriteImportsInDirectory,
   type DownloadPackageManagerResult,
 } from '../../binding/index.js';
-import { PackageManager, type WorkspaceInfo } from '../global-types/index.js';
+import { PackageManager, type WorkspaceInfo } from '../types/index.js';
 import {
   VITE_PLUS_NAME,
   VITE_PLUS_OVERRIDE_PACKAGES,
   VITE_PLUS_VERSION,
-} from '../global-utils/constants.js';
-import { editJsonFile, isJsonFile } from '../global-utils/json.js';
-import { detectPackageMetadata } from '../global-utils/package.js';
-import { displayRelative, rulesDir } from '../global-utils/path.js';
-import { editYamlFile, scalarString, type YamlDocument } from '../global-utils/yaml.js';
+} from '../utils/constants.js';
+import { editJsonFile, isJsonFile } from '../utils/json.js';
+import { detectPackageMetadata } from '../utils/package.js';
+import { displayRelative, rulesDir } from '../utils/path.js';
+import { editYamlFile, scalarString, type YamlDocument } from '../utils/yaml.js';
 import { detectConfigs, type ConfigFiles } from './detector.js';
 
 // packages that are replaced with vite-plus

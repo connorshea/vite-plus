@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import path from 'node:path';
 
-import type { WorkspaceInfo } from '../../global-types/index.js';
+import type { WorkspaceInfo } from '../../types/index.js';
 import type { ExecutionResult } from '../command.js';
 import { setPackageName } from '../utils.js';
 import { executeGeneratorScaffold } from './generator.js';

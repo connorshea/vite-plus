@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PackageManager } from '../../global-types/index.js';
+import { PackageManager } from '../../types/index.js';
 import { rewritePackageJson } from '../migrator.js';
 
 describe('rewritePackageJson', () => {

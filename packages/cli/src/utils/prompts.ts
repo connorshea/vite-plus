@@ -1,7 +1,7 @@
 import * as prompts from '@voidzero-dev/vite-plus-prompts';
 
 import { downloadPackageManager as downloadPackageManagerBinding } from '../../binding/index.js';
-import { PackageManager } from '../global-types/index.js';
+import { PackageManager } from '../types/index.js';
 import { runCommandSilently } from './command.js';
 import { accent } from './terminal.js';
 

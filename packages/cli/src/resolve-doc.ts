@@ -12,7 +12,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { DEFAULT_ENVS } from './utils.js';
+import { DEFAULT_ENVS } from './utils/constants.js';
 
 /**
  * Resolves the VitePress binary path and environment variables.

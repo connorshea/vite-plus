@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import { relative } from 'node:path/win32';
 import { fileURLToPath } from 'node:url';
 
-import { DEFAULT_ENVS, resolve } from './utils.js';
+import { DEFAULT_ENVS, resolve } from './utils/constants.js';
 
 /**
  * Resolves the oxlint binary path and environment variables.
