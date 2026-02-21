@@ -181,8 +181,8 @@ async function buildCli() {
 }
 
 async function buildGlobalModules() {
-  const { execFileSync } = await import('node:child_process');
-  execFileSync('npx', ['rolldown', '-c', 'rolldown.config.ts'], {
+  const { execSync } = await import('node:child_process');
+  execSync('npx rolldown -c rolldown.config.ts', {
     cwd: projectDir,
     stdio: 'inherit',
   });
