@@ -42,7 +42,7 @@ export function installGlobalCli() {
     console.log(`Using provided tgz: ${tgzPath}`);
   } else {
     // Create temp directory for pnpm pack output
-    tempDir = mkdtempSync(path.join(os.tmpdir(), 'vite-plus-cli-'));
+    tempDir = mkdtempSync(path.join(os.tmpdir(), 'vite-plus-'));
 
     // Use pnpm pack to create tarball
     // - Auto-resolves catalog: dependencies

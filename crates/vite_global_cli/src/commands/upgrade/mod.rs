@@ -66,7 +66,7 @@ pub async fn execute(options: UpgradeOptions) -> Result<ExitStatus, Error> {
     let current_version = env!("CARGO_PKG_VERSION");
 
     if !options.silent {
-        eprintln!("info: found vite-plus-cli@{} (current: {})", resolved.version, current_version);
+        eprintln!("info: found vite-plus@{} (current: {})", resolved.version, current_version);
     }
 
     // Step 4: Handle --check (report and exit)
@@ -89,10 +89,7 @@ pub async fn execute(options: UpgradeOptions) -> Result<ExitStatus, Error> {
     }
 
     if !options.silent {
-        eprintln!(
-            "info: downloading vite-plus-cli@{} for {}...",
-            resolved.version, platform_suffix
-        );
+        eprintln!("info: downloading vite-plus@{} for {}...", resolved.version, platform_suffix);
     }
 
     // Step 6: Download both tarballs

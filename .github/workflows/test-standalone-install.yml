@@ -18,6 +18,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  VITE_PLUS_VERSION: test
+
 jobs:
   test-install-sh:
     name: Test install.sh (${{ matrix.name }})

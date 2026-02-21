@@ -50,7 +50,7 @@ runs:
         pnpm --filter=vite-plus build-ts
 
     # NAPI builds - only run on cache miss (slow, especially on Windows)
-    # Must run before vite-plus/vite-plus-cli TypeScript builds which depend on the bindings
+    # Must run before vite-plus TypeScript builds which depend on the bindings
     - name: Build NAPI bindings (x86_64-linux)
       shell: bash
       if: steps.cache-restore.outputs.cache-hit != 'true' && inputs.target == 'x86_64-unknown-linux-gnu'

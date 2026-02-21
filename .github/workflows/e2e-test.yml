@@ -103,7 +103,6 @@ jobs:
 
       - name: Pack packages into tgz
         run: |
-          pnpm copy-cli-binding
           mkdir -p tmp/tgz
           cd packages/core && pnpm pack --pack-destination ../../tmp/tgz && cd ../..
           cd packages/test && pnpm pack --pack-destination ../../tmp/tgz && cd ../..
@@ -265,7 +264,7 @@ jobs:
       - name: Install vp CLI
         shell: bash
         run: |
-          node $GITHUB_WORKSPACE/packages/tools/src/install-global-cli.ts --tgz $GITHUB_WORKSPACE/tmp/tgz/vite-plus-cli-0.0.0.tgz
+          node $GITHUB_WORKSPACE/packages/tools/src/install-global-cli.ts --tgz $GITHUB_WORKSPACE/tmp/tgz/vite-plus-0.0.0.tgz
           echo "$HOME/.vite-plus/bin" >> $GITHUB_PATH
 
       - name: Migrate in ${{ matrix.project.name }}

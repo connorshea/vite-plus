@@ -9,12 +9,12 @@ on:
   pull_request:
     types: [opened, synchronize, labeled]
     paths-ignore:
-      - "**/*.md"
+      - '**/*.md'
   push:
     branches:
       - main
     paths-ignore:
-      - "**/*.md"
+      - '**/*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
@@ -65,7 +65,7 @@ jobs:
 
       - run: cargo check --all-targets --all-features
         env:
-          RUSTFLAGS: "-D warnings --cfg tokio_unstable" # also update .cargo/config.toml
+          RUSTFLAGS: '-D warnings --cfg tokio_unstable' # also update .cargo/config.toml
 
       # Test all crates/* packages. New crates are automatically included.
       - run: cargo test $(for d in crates/*/; do echo -n "-p $(basename $d) "; done)

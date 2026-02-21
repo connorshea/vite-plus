@@ -22,7 +22,6 @@ build:
   pnpm --filter=@voidzero-dev/vite-plus-core build
   pnpm --filter=@voidzero-dev/vite-plus-test build
   pnpm --filter=vite-plus build
-  pnpm --filter=vite-plus-cli build
 
 ready:
   git diff --exit-code --quiet

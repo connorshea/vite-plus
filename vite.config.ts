@@ -111,7 +111,6 @@ export default defineConfig({
           'vp run @voidzero-dev/vite-plus-core#build',
           'vp run @voidzero-dev/vite-plus-test#build',
           'vp run vite-plus#build',
-          'vp run vite-plus-cli#build',
         ].join(' && '),
       },
     },
