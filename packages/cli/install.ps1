@@ -103,37 +103,11 @@ function Get-VersionFromMetadata {
     return $metadata.version
 }
 
-function Get-PackageSuffix {
+function Get-PlatformSuffix {
     param([string]$Platform)
-
-    $metadata = Get-PackageMetadata
-    $optionalDeps = $metadata.optionalDependencies
-
-    if ($null -eq $optionalDeps) {
-        Write-Error-Exit "No optionalDependencies found in package metadata"
-    }
-
-    # Find matching package for platform
-    $prefix = "@voidzero-dev/vite-plus-"
-    $matchingPackage = $null
-
-    foreach ($dep in $optionalDeps.PSObject.Properties.Name) {
-        if ($dep.StartsWith("$prefix$Platform")) {
-            $matchingPackage = $dep
-            break
-        }
-    }
-
-    if ($null -eq $matchingPackage) {
-        # List available platforms for helpful error message
-        $availablePlatforms = $optionalDeps.PSObject.Properties.Name |
-            ForEach-Object { $_.Replace($prefix, "") } |
-            Join-String -Separator ", "
-        Write-Error-Exit "Unsupported platform: $Platform. Available platforms: $availablePlatforms"
-    }
-
-    # Extract suffix by removing the package prefix
-    return $matchingPackage.Replace($prefix, "")
+    # Windows needs -msvc suffix, other platforms map directly
+    if ($Platform.StartsWith("win32-")) { return "${Platform}-msvc" }
+    return $Platform
 }
 
 function Download-AndExtract {
@@ -302,10 +276,10 @@ function Main {
             Write-Error-Exit "VITE_PLUS_LOCAL_BINARY must be set when using VITE_PLUS_LOCAL_TGZ"
         }
     } else {
-        # Download from npm registry — extract only the vp binary from platform package
-        $packageSuffix = Get-PackageSuffix -Platform $platform
-        $packageName = "@voidzero-dev/vite-plus-$packageSuffix"
-        $platformUrl = "$NpmRegistry/$packageName/-/vite-plus-$packageSuffix-$ViteVersion.tgz"
+        # Download from npm registry — extract only the vp binary from CLI platform package
+        $platformSuffix = Get-PlatformSuffix -Platform $platform
+        $packageName = "@voidzero-dev/vite-plus-cli-$platformSuffix"
+        $platformUrl = "$NpmRegistry/$packageName/-/vite-plus-cli-$platformSuffix-$ViteVersion.tgz"
 
         $platformTempFile = New-TemporaryFile
         try {

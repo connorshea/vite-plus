@@ -253,31 +253,16 @@ get_version_from_metadata() {
   fi
 }
 
-# Get package suffix for platform from optionalDependencies
-# Sets PACKAGE_SUFFIX global variable
-# Platform format: darwin-arm64, darwin-x64, linux-x64, linux-arm64, win32-x64, etc.
-# Package format: @voidzero-dev/vite-plus-darwin-arm64, @voidzero-dev/vite-plus-linux-x64-gnu, etc.
-get_package_suffix() {
+# Get platform suffix for CLI package download
+# Sets PLATFORM_SUFFIX global variable
+# Platform format from detect_platform(): darwin-arm64, darwin-x64, linux-x64-gnu, linux-arm64-gnu, win32-x64, etc.
+# CLI package format: @voidzero-dev/vite-plus-cli-darwin-arm64, @voidzero-dev/vite-plus-cli-linux-x64-gnu, etc.
+get_platform_suffix() {
   local platform="$1"
-  local matching_package
-
-  # Call fetch_package_metadata to populate PACKAGE_METADATA global
-  # Don't use command substitution as it would swallow the exit from error()
-  fetch_package_metadata
-
-  # Extract optionalDependencies keys that match the platform
-  # Look for packages like @voidzero-dev/vite-plus-{platform}[-suffix]
-  matching_package=$(echo "$PACKAGE_METADATA" | grep -o "\"@voidzero-dev/vite-plus-${platform}[^\"]*\"" | head -1 | tr -d '"')
-
-  if [ -z "$matching_package" ]; then
-    # List available platforms for helpful error message
-    local available_platforms
-    available_platforms=$(echo "$PACKAGE_METADATA" | grep -o '"@voidzero-dev/vite-plus-[^"]*"' | sed 's/"@voidzero-dev\/vite-plus-//g' | tr -d '"' | tr '\n' ', ' | sed 's/,$//')
-    error "Unsupported platform: $platform. Available platforms: $available_platforms"
-  fi
-
-  # Extract suffix by removing the package prefix
-  PACKAGE_SUFFIX="${matching_package#@voidzero-dev/vite-plus-}"
+  case "$platform" in
+    win32-*) PLATFORM_SUFFIX="${platform}-msvc" ;;  # Windows needs -msvc suffix
+    *) PLATFORM_SUFFIX="$platform" ;;               # macOS/Linux map directly
+  esac
 }
 
 # Download and extract file (silent mode - no progress bar)
@@ -560,10 +545,10 @@ main() {
     fi
     chmod +x "$BIN_DIR/$binary_name"
   else
-    # Download from npm registry — extract only the vp binary from platform package
-    get_package_suffix "$platform"
-    local package_name="@voidzero-dev/vite-plus-${PACKAGE_SUFFIX}"
-    local platform_url="${NPM_REGISTRY}/${package_name}/-/vite-plus-${PACKAGE_SUFFIX}-${VITE_PLUS_VERSION}.tgz"
+    # Download from npm registry — extract only the vp binary from CLI platform package
+    get_platform_suffix "$platform"
+    local package_name="@voidzero-dev/vite-plus-cli-${PLATFORM_SUFFIX}"
+    local platform_url="${NPM_REGISTRY}/${package_name}/-/vite-plus-cli-${PLATFORM_SUFFIX}-${VITE_PLUS_VERSION}.tgz"
 
     # Create temp directory for extraction
     local platform_temp_dir

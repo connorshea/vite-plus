@@ -1,5 +1,13 @@
 import { execSync } from 'node:child_process';
-import { copyFileSync, existsSync, chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,41 +52,7 @@ const RUST_TARGETS: Record<string, string> = {
 const npmDir = join(currentDir, 'npm');
 const platformDirs = await readdir(npmDir);
 
-// Copy Rust binaries to each platform package and update package.json files
-for (const platformDir of platformDirs) {
-  const rustTarget = RUST_TARGETS[platformDir];
-  if (!rustTarget) {
-    // eslint-disable-next-line no-console
-    console.log(`Skipping ${platformDir}: no Rust target mapping`);
-    continue;
-  }
-
-  const isWindows = platformDir.startsWith('win32');
-  const binaryName = isWindows ? 'vp.exe' : 'vp';
-  const rustBinarySource = join(repoRoot, 'target', rustTarget, 'release', binaryName);
-  const rustBinaryDest = join(npmDir, platformDir, binaryName);
-
-  if (!existsSync(rustBinarySource)) {
-    throw new Error(`Rust binary not found at ${rustBinarySource}`);
-  }
-
-  copyFileSync(rustBinarySource, rustBinaryDest);
-  // Make the binary executable on Unix
-  if (!isWindows) {
-    chmodSync(rustBinaryDest, 0o755);
-  }
-
-  // Add binary to package.json files field
-  const platformPackageJsonPath = join(npmDir, platformDir, 'package.json');
-  const packageJson = JSON.parse(readFileSync(platformPackageJsonPath, 'utf-8'));
-  packageJson.files.push(binaryName);
-  writeFileSync(platformPackageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-
-  // eslint-disable-next-line no-console
-  console.log(`Copied Rust binary: ${rustBinarySource} -> ${rustBinaryDest}`);
-}
-
-// Publish each platform package
+// Publish each NAPI platform package (without vp binary)
 const npmTag = process.env.NPM_TAG || 'latest';
 for (const file of platformDirs) {
   execSync(`npm publish --tag ${npmTag} --access public --no-git-checks`, {
@@ -87,3 +61,74 @@ for (const file of platformDirs) {
     stdio: 'inherit',
   });
 }
+
+// Platform metadata for CLI packages
+const PLATFORM_META: Record<string, { os: string; cpu: string }> = {
+  'darwin-arm64': { os: 'darwin', cpu: 'arm64' },
+  'darwin-x64': { os: 'darwin', cpu: 'x64' },
+  'linux-arm64-gnu': { os: 'linux', cpu: 'arm64' },
+  'linux-x64-gnu': { os: 'linux', cpu: 'x64' },
+  'win32-arm64-msvc': { os: 'win32', cpu: 'arm64' },
+  'win32-x64-msvc': { os: 'win32', cpu: 'x64' },
+};
+
+// Read version from packages/cli/package.json for lockstep versioning
+const cliPackageJson = JSON.parse(readFileSync(join(currentDir, 'package.json'), 'utf-8'));
+const cliVersion = cliPackageJson.version;
+
+// Create and publish separate @voidzero-dev/vite-plus-cli-{platform} packages
+const cliNpmDir = join(currentDir, 'cli-npm');
+for (const [platform, rustTarget] of Object.entries(RUST_TARGETS)) {
+  const meta = PLATFORM_META[platform];
+  if (!meta) {
+    // eslint-disable-next-line no-console
+    console.log(`Skipping CLI package for ${platform}: no platform metadata`);
+    continue;
+  }
+
+  const isWindows = platform.startsWith('win32');
+  const binaryName = isWindows ? 'vp.exe' : 'vp';
+  const rustBinarySource = join(repoRoot, 'target', rustTarget, 'release', binaryName);
+
+  if (!existsSync(rustBinarySource)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Warning: Rust binary not found at ${rustBinarySource}, skipping CLI package for ${platform}`,
+    );
+    continue;
+  }
+
+  // Create temp directory for CLI package
+  const platformCliDir = join(cliNpmDir, platform);
+  mkdirSync(platformCliDir, { recursive: true });
+
+  // Copy binary
+  copyFileSync(rustBinarySource, join(platformCliDir, binaryName));
+  if (!isWindows) {
+    chmodSync(join(platformCliDir, binaryName), 0o755);
+  }
+
+  // Generate package.json
+  const cliPackage = {
+    name: `@voidzero-dev/vite-plus-cli-${platform}`,
+    version: cliVersion,
+    os: [meta.os],
+    cpu: [meta.cpu],
+    files: [binaryName],
+    description: `Vite+ CLI binary for ${platform}`,
+  };
+  writeFileSync(join(platformCliDir, 'package.json'), JSON.stringify(cliPackage, null, 2) + '\n');
+
+  // Publish CLI package
+  execSync(`npm publish --tag ${npmTag} --access public --no-git-checks`, {
+    cwd: platformCliDir,
+    env: process.env,
+    stdio: 'inherit',
+  });
+
+  // eslint-disable-next-line no-console
+  console.log(`Published CLI package: @voidzero-dev/vite-plus-cli-${platform}@${cliVersion}`);
+}
+
+// Clean up cli-npm directory
+rmSync(cliNpmDir, { recursive: true, force: true });
