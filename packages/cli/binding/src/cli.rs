@@ -267,7 +267,7 @@ impl SubcommandResolver {
                 let js_path = resolved.bin_path;
                 let js_path_str = js_path
                     .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("lint JS path is not valid UTF-8"))?;
+                    .ok_or_else(|| anyhow::anyhow!("lint JS path is not valid UTF8"))?;
 
                 let workspace_path_str = self
                     .workspace_path
