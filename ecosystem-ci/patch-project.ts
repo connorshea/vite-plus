@@ -47,13 +47,21 @@ execSync(`${cli} migrate --no-agent --no-interactive`, {
 });
 
 // Enable cacheScripts so e2e tests exercise the cache hit/miss paths.
-// Migration preserves the existing config extension (.ts or .js).
-const viteConfigPath = existsSync(join(cwd, 'vite.config.ts'))
-  ? join(cwd, 'vite.config.ts')
-  : join(cwd, 'vite.config.js');
-const viteConfig = await readFile(viteConfigPath, 'utf-8');
-await writeFile(
-  viteConfigPath,
-  viteConfig.replace('defineConfig({', 'defineConfig({\n  run: { cacheScripts: true },'),
-  'utf-8',
-);
+// Migration may create vite.config.ts, preserve an existing .ts/.js, or create none at all.
+const tsPath = join(cwd, 'vite.config.ts');
+const jsPath = join(cwd, 'vite.config.js');
+if (existsSync(tsPath) || existsSync(jsPath)) {
+  const viteConfigPath = existsSync(tsPath) ? tsPath : jsPath;
+  const viteConfig = await readFile(viteConfigPath, 'utf-8');
+  await writeFile(
+    viteConfigPath,
+    viteConfig.replace('defineConfig({', 'defineConfig({\n  run: { cacheScripts: true },'),
+    'utf-8',
+  );
+} else {
+  await writeFile(
+    tsPath,
+    `import { defineConfig } from 'vite-plus';\n\nexport default defineConfig({\n  run: { cacheScripts: true },\n});\n`,
+    'utf-8',
+  );
+}
