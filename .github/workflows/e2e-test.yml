@@ -301,6 +301,25 @@ jobs:
           VITE_LOG_OUTPUT_DIR: ${{ runner.temp }}/trace-artifacts
         run: ${{ matrix.project.command }}
 
+      - name: Invalidate task cache in ${{ matrix.project.name }}
+        working-directory: ${{ runner.temp }}/vite-plus-ecosystem-ci/${{ matrix.project.name }}${{ matrix.project.directory && format('/{0}', matrix.project.directory) || '' }}
+        run: |
+          # Modify package.json to trigger PostRunFingerprintMismatch on next vp run
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg._cacheInvalidation = Date.now().toString();
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Run vite-plus commands (cache miss run) in ${{ matrix.project.name }}
+        working-directory: ${{ runner.temp }}/vite-plus-ecosystem-ci/${{ matrix.project.name }}${{ matrix.project.directory && format('/{0}', matrix.project.directory) || '' }}
+        env:
+          VITE_LOG: debug
+          VITE_LOG_OUTPUT: chrome-json
+          VITE_LOG_OUTPUT_DIR: ${{ runner.temp }}/trace-artifacts
+        run: ${{ matrix.project.command }}
+
       - name: Collect trace files
         if: always()
         shell: bash

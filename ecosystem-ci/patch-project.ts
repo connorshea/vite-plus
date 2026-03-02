@@ -44,3 +44,12 @@ execSync(`${cli} migrate --no-agent --no-interactive`, {
     VITE_PLUS_VERSION: `file:${tgzDir}/vite-plus-0.0.0.tgz`,
   },
 });
+
+// Enable cacheScripts so e2e tests exercise the cache hit/miss paths
+const viteConfigPath = join(cwd, 'vite.config.ts');
+const viteConfig = await readFile(viteConfigPath, 'utf-8');
+await writeFile(
+  viteConfigPath,
+  viteConfig.replace('defineConfig({', 'defineConfig({\n  run: { cacheScripts: true },'),
+  'utf-8',
+);
