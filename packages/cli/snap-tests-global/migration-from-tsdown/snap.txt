@@ -17,6 +17,8 @@
 │
 ●    tsdown.config.ts
 │
+▲  Failed to format package.json
+│
 ◆  Wrote agent instructions to AGENTS.md
 │
 └  ✔ Migration completed!

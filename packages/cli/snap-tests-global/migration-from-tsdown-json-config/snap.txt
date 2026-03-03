@@ -9,6 +9,8 @@
 │
 ◆  ✔ Merged tsdown.config.json into vite.config.ts
 │
+▲  Failed to format package.json
+│
 ◆  Wrote agent instructions to AGENTS.md
 │
 └  ✔ Migration completed!
