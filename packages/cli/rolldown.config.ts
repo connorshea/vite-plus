@@ -5,6 +5,8 @@ export default defineConfig({
     create: './src/create/bin.ts',
     migrate: './src/migration/bin.ts',
     version: './src/version.ts',
+    prepare: './src/prepare/bin.ts',
+    'lint-staged': './src/lint-staged/bin.ts',
   },
   treeshake: false,
   external(source) {
