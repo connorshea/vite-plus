@@ -399,9 +399,11 @@ pub async fn download_package_manager(
     let home_dir = vite_shared::get_vite_plus_home()?;
     let bin_name = package_manager_type.to_string();
 
-    // For bun, use platform-specific download flow
+    // For bun, use platform-specific download flow.
+    // The hash from `packageManager` field belongs to the main `bun` npm package,
+    // not the platform-specific binary, so we don't pass it through.
     if matches!(package_manager_type, PackageManagerType::Bun) {
-        return download_bun_package_manager(&version, &home_dir, expected_hash).await;
+        return download_bun_package_manager(&version, &home_dir).await;
     }
 
     let tgz_url = get_npm_package_tgz_url(&package_name, &version);
@@ -506,7 +508,6 @@ fn get_bun_platform_package_name() -> Result<&'static str, Error> {
 async fn download_bun_package_manager(
     version: &Str,
     home_dir: &AbsolutePath,
-    expected_hash: Option<&str>,
 ) -> Result<(AbsolutePathBuf, Str, Str), Error> {
     let package_name: Str = "bun".into();
     let platform_package_name = get_bun_platform_package_name()?;
@@ -532,9 +533,6 @@ async fn download_bun_package_manager(
     let platform_tgz_url = get_npm_package_tgz_url(platform_package_name, version);
     let target_dir_tmp = tempfile::tempdir_in(parent_dir)?.path().to_path_buf();
 
-    // The hash from the `packageManager` field (e.g., "bun@1.2.0+sha512.abc") belongs to the
-    // main `bun` npm package, not the platform-specific `@oven/bun-<platform>` package.
-    // We must skip hash validation here since the downloaded tarball is a different package.
     download_and_extract_tgz_with_hash(&platform_tgz_url, &target_dir_tmp, None).await.map_err(
         |err| {
             if let Error::Reqwest(e) = &err

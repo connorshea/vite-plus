@@ -32,9 +32,9 @@ VITE+ - The Unified Toolchain for the Web
 bun install v<semver> (af24e281)
 Saved lockfile
 
-+ test-vite-plus-top-package@<semver> (v1.1.0 available)
-+ test-vite-plus-other-optional@<semver> (v1.1.0 available)
-+ testnpm2@<semver> (v1.0.1 available)
++ test-vite-plus-top-package@<semver>
++ test-vite-plus-other-optional@<semver>
++ testnpm2@<semver>
 
 4 packages installed [<variable>ms]
 

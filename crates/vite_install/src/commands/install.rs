@@ -331,7 +331,6 @@ impl PackageManager {
                 if options.fix_lockfile {
                     output::warn("bun does not support --fix-lockfile");
                 }
-                // shamefully-hoist: bun uses hoisted node_modules by default, skip silently
                 if options.resolution_only {
                     output::warn("bun does not support --resolution-only");
                 }
