@@ -749,6 +749,8 @@ export function rewriteMonorepo(
     rewritePnpmWorkspaceYaml(workspaceInfo.rootDir);
   } else if (workspaceInfo.packageManager === PackageManager.yarn) {
     rewriteYarnrcYml(workspaceInfo.rootDir);
+  } else if (workspaceInfo.packageManager === PackageManager.bun) {
+    rewriteBunCatalog(workspaceInfo.rootDir);
   }
   rewriteRootWorkspacePackageJson(
     workspaceInfo.rootDir,
@@ -951,6 +953,51 @@ function rewriteCatalog(doc: YamlDocument): void {
 }
 
 /**
+ * Write catalog entries to root package.json for bun.
+ * Bun stores catalogs in package.json under the `catalog` key,
+ * unlike pnpm which uses pnpm-workspace.yaml.
+ * @see https://bun.sh/docs/pm/catalogs
+ */
+function rewriteBunCatalog(projectPath: string): void {
+  const packageJsonPath = path.join(projectPath, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    return;
+  }
+
+  editJsonFile<{
+    catalog?: Record<string, string>;
+    overrides?: Record<string, string>;
+  }>(packageJsonPath, (pkg) => {
+    const catalog: Record<string, string> = { ...pkg.catalog };
+
+    // Add vite-plus managed packages to catalog
+    for (const [key, value] of Object.entries(VITE_PLUS_OVERRIDE_PACKAGES)) {
+      if (!value.startsWith('file:')) {
+        catalog[key] = value;
+      }
+    }
+    if (!VITE_PLUS_VERSION.startsWith('file:')) {
+      catalog[VITE_PLUS_NAME] = VITE_PLUS_VERSION;
+    }
+
+    // Remove replaced packages from catalog
+    for (const name of REMOVE_PACKAGES) {
+      delete catalog[name];
+    }
+
+    pkg.catalog = catalog;
+
+    // bun uses overrides in package.json (catalog: references are NOT supported in overrides)
+    pkg.overrides = {
+      ...pkg.overrides,
+      ...VITE_PLUS_OVERRIDE_PACKAGES,
+    };
+
+    return pkg;
+  });
+}
+
+/**
  * Rewrite root workspace package.json to add vite-plus dependencies
  * @param projectPath - The path to the project
  */
@@ -1095,8 +1142,7 @@ export function rewritePackageJson(
     const updated = rewriteScripts(JSON.stringify(config), readRulesYaml());
     extractedStagedConfig = updated ? JSON.parse(updated) : config;
   }
-  const supportCatalog =
-    isMonorepo && packageManager !== PackageManager.npm && packageManager !== PackageManager.bun;
+  const supportCatalog = isMonorepo && packageManager !== PackageManager.npm;
   let needVitePlus = false;
   for (const [key, version] of Object.entries(VITE_PLUS_OVERRIDE_PACKAGES)) {
     const value = supportCatalog && !version.startsWith('file:') ? 'catalog:' : version;
