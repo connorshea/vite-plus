@@ -131,7 +131,7 @@ vp install --filter app              # Install for specific package
 | `--no-optional`        | `--no-optional`        | `--ignore-optional`    | N/A                                         | `--omit=optional`           | `--omit optional`        | Skip optionalDependencies            |
 | `--frozen-lockfile`    | `--frozen-lockfile`    | `--frozen-lockfile`    | `--immutable`                               | `ci` (use `npm ci`)         | `--frozen-lockfile`      | Fail if lockfile outdated            |
 | `--no-frozen-lockfile` | `--no-frozen-lockfile` | `--no-frozen-lockfile` | `--no-immutable`                            | `install` (not `ci`)        | `--no-frozen-lockfile`   | Allow lockfile updates               |
-| `--lockfile-only`      | `--lockfile-only`      | N/A                    | `--mode update-lockfile`                    | `--package-lock-only`       | N/A                      | Only update lockfile                 |
+| `--lockfile-only`      | `--lockfile-only`      | N/A                    | `--mode update-lockfile`                    | `--package-lock-only`       | `--lockfile-only`        | Only update lockfile                 |
 | `--prefer-offline`     | `--prefer-offline`     | `--prefer-offline`     | N/A                                         | `--prefer-offline`          | N/A                      | Prefer cached packages               |
 | `--offline`            | `--offline`            | `--offline`            | N/A                                         | `--offline`                 | N/A                      | Only use cache                       |
 | `--force, -f`          | `--force`              | `--force`              | N/A                                         | `--force`                   | `--force`                | Force reinstall                      |
@@ -1014,7 +1014,7 @@ This is a new feature with no breaking changes:
 | `--no-optional`        | ✅   | ✅     | ⚠️                      | ✅              | ✅                      | yarn@2+ needs .yarnrc.yml  |
 | `--frozen-lockfile`    | ✅   | ✅     | ✅ `--immutable`        | ✅ `ci`         | ✅                      | npm uses `npm ci`          |
 | `--no-frozen-lockfile` | ✅   | ✅     | ✅ `--no-immutable`     | ✅ `install`    | ✅                      | Pass through to PM         |
-| `--lockfile-only`      | ✅   | ❌     | ✅                      | ✅              | ❌                      | yarn@1, bun not supported  |
+| `--lockfile-only`      | ✅   | ❌     | ✅                      | ✅              | ✅                      | yarn@1 not supported       |
 | `--prefer-offline`     | ✅   | ✅     | ❌                      | ✅              | ❌                      | yarn@2+, bun not supported |
 | `--offline`            | ✅   | ✅     | ❌                      | ✅              | ❌                      | yarn@2+, bun not supported |
 | `--force`              | ✅   | ✅     | ❌                      | ✅              | ✅                      | yarn@2+ not supported      |

@@ -921,13 +921,13 @@ Bun provides several `bun pm` subcommands that may not have direct equivalents i
 
 | Vite+ Flag   | pnpm       | npm        | yarn@1     | yarn@2+    | bun        | Description       |
 | ------------ | ---------- | ---------- | ---------- | ---------- | ---------- | ----------------- |
-| `vp pm view` | `npm view` | `npm view` | `npm view` | `npm view` | `npm view` | View package info |
+| `vp pm view` | `npm view` | `npm view` | `npm view` | `npm view` | `bun info` | View package info |
 | `--json`     | `--json`   | `--json`   | `--json`   | `--json`   | `--json`   | JSON output       |
 
 **Note:**
 
-- All package managers delegate to `npm view` for viewing package information
-- pnpm and yarn both use npm's view/info functionality internally
+- pnpm and yarn delegate to `npm view` for viewing package information
+- bun has a native `bun info` command for viewing package information
 - Aliases: `vp pm info` and `vp pm show` work the same as `vp pm view`
 
 #### Publish Command

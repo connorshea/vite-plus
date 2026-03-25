@@ -161,9 +161,9 @@ vite outdated -g                      # Check globally installed packages
 | `-r, --recursive`      | `-r, --recursive`      | `--all`                             | N/A             | N/A                        | `-r` / `--recursive` | Check across all workspaces                   |
 | `--filter <pattern>`   | `--filter <pattern>`   | `--workspace <pattern>`             | N/A             | N/A                        | `--filter` / `-F`    | Target specific workspace                     |
 | `-w, --workspace-root` | `-w, --workspace-root` | `--include-workspace-root`          | N/A             | N/A                        | N/A                  | Include workspace root                        |
-| `-P, --prod`           | `-P, --prod`           | N/A                                 | N/A             | N/A                        | N/A                  | Only production dependencies (pnpm-specific)  |
+| `-P, --prod`           | `-P, --prod`           | N/A                                 | N/A             | N/A                        | `--production`       | Only production dependencies                  |
 | `-D, --dev`            | `-D, --dev`            | N/A                                 | N/A             | N/A                        | N/A                  | Only dev dependencies (pnpm-specific)         |
-| `--no-optional`        | `--no-optional`        | N/A                                 | N/A             | N/A                        | N/A                  | Exclude optional dependencies (pnpm-specific) |
+| `--no-optional`        | `--no-optional`        | N/A                                 | N/A             | N/A                        | `--omit optional`    | Exclude optional dependencies                 |
 | `--compatible`         | `--compatible`         | N/A                                 | N/A             | N/A                        | N/A                  | Only show compatible versions (pnpm-specific) |
 | `--sort-by <field>`    | `--sort-by <field>`    | N/A                                 | N/A             | N/A                        | N/A                  | Sort results by field (pnpm-specific)         |
 | `-g, --global`         | `-g, --global`         | `-g, --global`                      | N/A             | N/A                        | N/A                  | Check globally installed packages             |
@@ -175,7 +175,7 @@ vite outdated -g                      # Check globally installed packages
 - yarn@1 accepts package names but limited filtering options
 - yarn@2+ uses interactive mode (`upgrade-interactive`) instead of traditional `outdated`
 - pnpm has the most comprehensive filtering and output options
-- bun supports `--filter` / `-F` for workspace filtering and `-r` / `--recursive` for checking across all workspaces
+- bun supports `--filter` / `-F` for workspace filtering, `-r` / `--recursive` for checking across all workspaces, `--production` for production-only, and `--omit optional` for excluding optional dependencies
 - bun does not support JSON output format (`--format json`)
 
 ### Outdated Behavior Differences Across Package Managers
