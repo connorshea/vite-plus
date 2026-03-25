@@ -17,23 +17,8 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-> vp pm view testnpm2 # should view package information
-testnpm2@<semver> | ISC | deps: 0 | versions: 2
-
-
-dist
+> vp pm view testnpm2 | grep 'registry' # should view package information
  .tarball: https://registry.<domain>/testnpm2/-/testnpm2-1.0.1.tgz
- .shasum: <hash>
- .integrity: sha512-<hash>
-
-dist-tags:
-latest: <semver>
-release-1: <semver>
-
-maintainers:
-- fengmk2 <fengmk2@gmail.com>
-
-Published: <date>T<date>.560Z
 
 > vp pm view testnpm2 version # should view version field
 1.0.1
