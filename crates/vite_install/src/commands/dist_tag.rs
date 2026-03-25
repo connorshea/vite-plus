@@ -66,9 +66,7 @@ impl PackageManager {
                 }
             }
             PackageManagerType::Bun => {
-                output::warn(
-                    "bun does not support dist-tag, falling back to npm dist-tag",
-                );
+                output::warn("bun does not support dist-tag, falling back to npm dist-tag");
                 bin_name = "npm".into();
                 args.push("dist-tag".into());
             }

@@ -57,9 +57,7 @@ impl PackageManager {
                 }
             }
             PackageManagerType::Bun => {
-                output::warn(
-                    "bun does not have a login command, falling back to npm login",
-                );
+                output::warn("bun does not have a login command, falling back to npm login");
                 bin_name = "npm".into();
                 args.push("login".into());
             }

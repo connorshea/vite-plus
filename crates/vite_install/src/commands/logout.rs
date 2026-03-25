@@ -57,9 +57,7 @@ impl PackageManager {
                 }
             }
             PackageManagerType::Bun => {
-                output::warn(
-                    "bun does not have a logout command, falling back to npm logout",
-                );
+                output::warn("bun does not have a logout command, falling back to npm logout");
                 bin_name = "npm".into();
                 args.push("logout".into());
             }

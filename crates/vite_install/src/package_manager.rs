@@ -557,11 +557,8 @@ async fn download_bun_package_manager(
     // The platform package extracts to `package/` with the bun binary inside
     // Find the native binary in the extracted package
     let package_dir = target_dir_tmp.join("package");
-    let native_bin_src = if cfg!(windows) {
-        package_dir.join("bun.exe")
-    } else {
-        package_dir.join("bun")
-    };
+    let native_bin_src =
+        if cfg!(windows) { package_dir.join("bun.exe") } else { package_dir.join("bun") };
 
     // Move native binary to bin/bun.native
     let native_bin_dest = if cfg!(windows) {
@@ -2348,8 +2345,7 @@ mod tests {
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
         let (pm_type, version, hash) =
-            get_package_manager_type_and_version(&workspace_root, None)
-                .expect("Should detect bun");
+            get_package_manager_type_and_version(&workspace_root, None).expect("Should detect bun");
         assert_eq!(pm_type, PackageManagerType::Bun);
         assert_eq!(version.as_str(), "latest");
         assert!(hash.is_none());
@@ -2369,8 +2365,7 @@ mod tests {
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
         let (pm_type, version, hash) =
-            get_package_manager_type_and_version(&workspace_root, None)
-                .expect("Should detect bun");
+            get_package_manager_type_and_version(&workspace_root, None).expect("Should detect bun");
         assert_eq!(pm_type, PackageManagerType::Bun);
         assert_eq!(version.as_str(), "latest");
         assert!(hash.is_none());
@@ -2390,8 +2385,7 @@ mod tests {
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
         let (pm_type, version, hash) =
-            get_package_manager_type_and_version(&workspace_root, None)
-                .expect("Should detect bun");
+            get_package_manager_type_and_version(&workspace_root, None).expect("Should detect bun");
         assert_eq!(pm_type, PackageManagerType::Bun);
         assert_eq!(version.as_str(), "latest");
         assert!(hash.is_none());
@@ -2406,9 +2400,8 @@ mod tests {
 
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
-        let (pm_type, version, hash) =
-            get_package_manager_type_and_version(&workspace_root, None)
-                .expect("Should detect bun from packageManager field");
+        let (pm_type, version, hash) = get_package_manager_type_and_version(&workspace_root, None)
+            .expect("Should detect bun from packageManager field");
         assert_eq!(pm_type, PackageManagerType::Bun);
         assert_eq!(version.as_str(), "1.2.0");
         assert!(hash.is_none());
@@ -2424,9 +2417,8 @@ mod tests {
 
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
-        let (pm_type, version, hash) =
-            get_package_manager_type_and_version(&workspace_root, None)
-                .expect("Should detect bun with hash");
+        let (pm_type, version, hash) = get_package_manager_type_and_version(&workspace_root, None)
+            .expect("Should detect bun with hash");
         assert_eq!(pm_type, PackageManagerType::Bun);
         assert_eq!(version.as_str(), "1.2.0");
         assert_eq!(hash.unwrap().as_str(), "sha512.abc123");
@@ -2447,8 +2439,8 @@ mod tests {
 
         let (workspace_root, _) =
             find_workspace_root(&temp_dir_path).expect("Should find workspace root");
-        let (pm_type, _, _) = get_package_manager_type_and_version(&workspace_root, None)
-            .expect("Should detect bun");
+        let (pm_type, _, _) =
+            get_package_manager_type_and_version(&workspace_root, None).expect("Should detect bun");
         assert_eq!(
             pm_type,
             PackageManagerType::Bun,

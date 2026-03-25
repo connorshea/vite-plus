@@ -3,10 +3,11 @@ use std::{collections::HashMap, process::ExitStatus};
 use vite_command::run_command;
 use vite_error::Error;
 use vite_path::AbsolutePath;
-
 use vite_shared::output;
 
-use crate::package_manager::{PackageManager, PackageManagerType, ResolveCommandResult, format_path_env};
+use crate::package_manager::{
+    PackageManager, PackageManagerType, ResolveCommandResult, format_path_env,
+};
 
 /// Owner subcommand type.
 #[derive(Debug, Clone)]
@@ -39,9 +40,7 @@ impl PackageManager {
         let mut args: Vec<String> = Vec::new();
 
         if self.client == PackageManagerType::Bun {
-            output::warn(
-                "bun does not support the owner command, falling back to npm owner",
-            );
+            output::warn("bun does not support the owner command, falling back to npm owner");
         }
 
         args.push("owner".into());

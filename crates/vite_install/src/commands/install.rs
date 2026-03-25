@@ -182,7 +182,9 @@ impl PackageManager {
                         );
                     }
                     if options.prod {
-                        output::warn("yarn@2+ requires configuration in .yarnrc.yml for --prod behavior");
+                        output::warn(
+                            "yarn@2+ requires configuration in .yarnrc.yml for --prod behavior",
+                        );
                     }
                     if options.resolution_only {
                         output::warn("yarn@2+ does not support --resolution-only");
@@ -320,9 +322,7 @@ impl PackageManager {
                     output::warn("bun does not support --offline");
                 }
                 if options.ignore_scripts {
-                    output::warn(
-                        "bun uses trustedDependencies instead of --ignore-scripts",
-                    );
+                    output::warn("bun uses trustedDependencies instead of --ignore-scripts");
                 }
                 if options.no_lockfile {
                     output::warn("bun does not support --no-lockfile");

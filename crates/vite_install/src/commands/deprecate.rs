@@ -3,10 +3,11 @@ use std::{collections::HashMap, process::ExitStatus};
 use vite_command::run_command;
 use vite_error::Error;
 use vite_path::AbsolutePath;
-
 use vite_shared::output;
 
-use crate::package_manager::{PackageManager, PackageManagerType, ResolveCommandResult, format_path_env};
+use crate::package_manager::{
+    PackageManager, PackageManagerType, ResolveCommandResult, format_path_env,
+};
 
 /// Options for the deprecate command.
 #[derive(Debug, Default)]
