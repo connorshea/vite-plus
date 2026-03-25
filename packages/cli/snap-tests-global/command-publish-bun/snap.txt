@@ -26,5 +26,18 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp pm publish --dry-run # should preview publish without actually publishing
-error: Install error: Unsupported package manager: bun
+> vp pm publish --dry-run # should preview publish without actually publishing
+bun publish v<semver> (af24e281)
+
+packed <variable>B package.json
+packed <variable>B output.log
+packed <variable>KB snap.txt
+packed <variable>B steps.json
+
+Total files: 4
+Unpacked size: 1.42KB
+Tag: latest
+Access: default
+Registry: https://registry.<domain>
+
+ + command-publish-bun@<semver> (dry-run)

@@ -28,10 +28,19 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp install # should install packages first
+> vp install # should install packages first
 VITE+ - The Unified Toolchain for the Web
 
-error: Install error: Unsupported package manager: bun
+bun install v<semver> (af24e281)
+Saved lockfile
 
-[1]> vp why testnpm2 # should show why package is installed
-error: Install error: Unsupported package manager: bun
++ test-vite-plus-package@<semver>
++ test-vite-plus-package-optional@<semver>
++ testnpm2@<semver>
+
+3 packages installed [<variable>ms]
+
+> vp why testnpm2 # should show why package is installed
+testnpm2@<semver>
+  └─ command-why-bun (requires <semver>)
+

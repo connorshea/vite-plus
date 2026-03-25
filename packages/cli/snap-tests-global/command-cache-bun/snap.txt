@@ -15,8 +15,5 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp pm cache dir > /dev/null # should show cache directory
-error: Install error: Unsupported package manager: bun
-
-[1]> vp pm cache path > /dev/null # should show cache path (alias for dir)
-error: Install error: Unsupported package manager: bun
+> vp pm cache dir > /dev/null # should show cache directory
+> vp pm cache path > /dev/null # should show cache path (alias for dir)

@@ -31,14 +31,74 @@ Usage: vp remove <PACKAGES>... [-- <PASS_THROUGH_ARGS>...]
 
 For more information, try '--help'.
 
-[1]> vp remove testnpm2 -D && cat package.json # should error when remove not exists package from dev dependencies
-error: Install error: Unsupported package manager: bun
+> vp remove testnpm2 -D && cat package.json # should error when remove not exists package from dev dependencies
+bun remove v<semver> (af24e281)
+package.json doesn't have dependencies, there's nothing to remove!
+{
+  "name": "command-remove-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>"
+}
 
-[1]> vp add testnpm2 && vp add -D test-vite-plus-install && vp add -O test-vite-plus-package-optional && cat package.json # should add packages to dependencies
-error: Install error: Unsupported package manager: bun
+> vp add testnpm2 && vp add -D test-vite-plus-install && vp add -O test-vite-plus-package-optional && cat package.json # should add packages to dependencies
+bun add v<semver> (af24e281)
+Saved lockfile
 
-[1]> vp remove testnpm2 test-vite-plus-install && cat package.json # should remove packages from dependencies
-error: Install error: Unsupported package manager: bun
+installed testnpm2@<semver>
 
-[1]> vp remove -O test-vite-plus-package-optional && cat package.json # should remove package from optional dependencies
-error: Install error: Unsupported package manager: bun
+1 package installed [<variable>ms]
+bun add v<semver> (af24e281)
+Saved lockfile
+
+installed test-vite-plus-install@<semver>
+
+1 package installed [<variable>ms]
+bun add v<semver> (af24e281)
+Saved lockfile
+
+installed test-vite-plus-package-optional@<semver>
+
+1 package installed [<variable>ms]
+{
+  "name": "command-remove-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>",
+  "dependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "devDependencies": {
+    "test-vite-plus-install": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "test-vite-plus-package-optional": "^1.0.0"
+  }
+}
+
+> vp remove testnpm2 test-vite-plus-install && cat package.json # should remove packages from dependencies
+bun remove v<semver> (af24e281)
+Saved lockfile
+
+- testnpm2
+- test-vite-plus-install
+2 packages removed [<variable>ms]
+{
+  "name": "command-remove-bun",
+  "version": "1.0.0",
+  "optionalDependencies": {
+    "test-vite-plus-package-optional": "^1.0.0"
+  },
+  "packageManager": "bun@<semver>"
+}
+
+> vp remove -O test-vite-plus-package-optional && cat package.json # should remove package from optional dependencies
+bun remove v<semver> (af24e281)
+
+package.json has no dependencies! Deleted empty lockfile
+
+- test-vite-plus-package-optional
+1 package removed [<variable>ms]
+{
+  "name": "command-remove-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>"
+}

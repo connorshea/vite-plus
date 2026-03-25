@@ -26,8 +26,53 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp update testnpm2 && cat package.json # should update package within semver range
-error: Install error: Unsupported package manager: bun
+> vp update testnpm2 && cat package.json # should update package within semver range
+bun update v<semver> (af24e281)
+Resolving dependencies
+Resolved, downloaded and extracted [6]
+Saved lockfile
 
-[1]> vp up testnpm2 --latest && cat package.json # should update to absolute latest version
-error: Install error: Unsupported package manager: bun
++ test-vite-plus-package@<semver>
++ test-vite-plus-package-optional@<semver>
+
+installed testnpm2@<semver>
+
+3 packages installed [<variable>ms]
+{
+  "name": "command-update-bun",
+  "version": "1.0.0",
+  "dependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "devDependencies": {
+    "test-vite-plus-package": "*"
+  },
+  "optionalDependencies": {
+    "test-vite-plus-package-optional": "*"
+  },
+  "packageManager": "bun@<semver>"
+}
+
+> vp up testnpm2 --latest && cat package.json # should update to absolute latest version
+bun update v<semver> (af24e281)
+Resolving dependencies
+Resolved, downloaded and extracted [2]
+Saved lockfile
+
+installed testnpm2@<semver>
+
+[<variable>ms] done
+{
+  "name": "command-update-bun",
+  "version": "1.0.0",
+  "dependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "devDependencies": {
+    "test-vite-plus-package": "*"
+  },
+  "optionalDependencies": {
+    "test-vite-plus-package-optional": "*"
+  },
+  "packageManager": "bun@<semver>"
+}
