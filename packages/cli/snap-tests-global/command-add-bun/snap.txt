@@ -36,16 +36,89 @@ Usage: vp add <PACKAGES>... [-- <PASS_THROUGH_ARGS>...]
 
 For more information, try '--help'.
 
-[1]> vp add testnpm2 -D && cat package.json # should add package as dev dependencies
-error: Install error: Unsupported package manager: bun
+> vp add testnpm2 -D && cat package.json # should add package as dev dependencies
+bun add v<semver> (af24e281)
+Saved lockfile
 
-[1]> vp add testnpm2 test-vite-plus-install && cat package.json # should add packages to dependencies
-error: Install error: Unsupported package manager: bun
+installed testnpm2@<semver>
 
-[1]> vp install test-vite-plus-package@1.0.0 --save-peer && cat package.json # should install package alias for add
+1 package installed [<variable>ms]
+{
+  "name": "command-add-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>",
+  "devDependencies": {
+    "testnpm2": "^1.0.1"
+  }
+}
+
+> vp add testnpm2 test-vite-plus-install && cat package.json # should add packages to dependencies
+bun add v<semver> (af24e281)
+Saved lockfile
+
+installed testnpm2@<semver>
+installed test-vite-plus-install@<semver>
+
+2 packages installed [<variable>ms]
+{
+  "name": "command-add-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>",
+  "devDependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "dependencies": {
+    "test-vite-plus-install": "^1.0.0"
+  }
+}
+
+> vp install test-vite-plus-package@1.0.0 --save-peer && cat package.json # should install package alias for add
 VITE+ - The Unified Toolchain for the Web
 
-error: Install error: Unsupported package manager: bun
+bun add v<semver> (af24e281)
+Resolving dependencies
+Resolved, downloaded and extracted [0]
+Saved lockfile
 
-[1]> vp add test-vite-plus-package-optional -O && cat package.json # should add package as optional dependencies
-error: Install error: Unsupported package manager: bun
+installed test-vite-plus-package@<semver>
+
+1 package installed [<variable>ms]
+{
+  "name": "command-add-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>",
+  "devDependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "dependencies": {
+    "test-vite-plus-install": "^1.0.0"
+  },
+  "peerDependencies": {
+    "test-vite-plus-package": "1.0.0"
+  }
+}
+
+> vp add test-vite-plus-package-optional -O && cat package.json # should add package as optional dependencies
+bun add v<semver> (af24e281)
+Saved lockfile
+
+installed test-vite-plus-package-optional@<semver>
+
+1 package installed [<variable>ms]
+{
+  "name": "command-add-bun",
+  "version": "1.0.0",
+  "packageManager": "bun@<semver>",
+  "devDependencies": {
+    "testnpm2": "^1.0.1"
+  },
+  "dependencies": {
+    "test-vite-plus-install": "^1.0.0"
+  },
+  "peerDependencies": {
+    "test-vite-plus-package": "1.0.0"
+  },
+  "optionalDependencies": {
+    "test-vite-plus-package-optional": "^1.0.0"
+  }
+}

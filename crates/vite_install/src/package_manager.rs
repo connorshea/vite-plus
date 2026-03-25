@@ -554,11 +554,12 @@ async fn download_bun_package_manager(
     let tmp_bin_dir = tmp_bun_dir.join("bin");
     tokio::fs::create_dir_all(&tmp_bin_dir).await?;
 
-    // The platform package extracts to `package/` with the bun binary inside
+    // The platform package extracts to `package/bin/` with the bun binary inside
     // Find the native binary in the extracted package
     let package_dir = target_dir_tmp.join("package");
+    let package_bin_dir = package_dir.join("bin");
     let native_bin_src =
-        if cfg!(windows) { package_dir.join("bun.exe") } else { package_dir.join("bun") };
+        if cfg!(windows) { package_bin_dir.join("bun.exe") } else { package_bin_dir.join("bun") };
 
     // Move native binary to bin/bun.native
     let native_bin_dest = if cfg!(windows) {

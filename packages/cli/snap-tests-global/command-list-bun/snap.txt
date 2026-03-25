@@ -1,7 +1,14 @@
-[1]> vp install # should install packages first
+> vp install # should install packages first
 VITE+ - The Unified Toolchain for the Web
 
-error: Install error: Unsupported package manager: bun
+bun install v<semver> (af24e281)
+Saved lockfile
+
++ test-vite-plus-package@<semver>
++ test-vite-plus-package-optional@<semver>
++ testnpm2@<semver>
+
+3 packages installed [<variable>ms]
 
 > vp pm list --help # should show help
 VITE+ - The Unified Toolchain for the Web
@@ -33,5 +40,8 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp pm list # should list installed packages
-error: Install error: Unsupported package manager: bun
+> vp pm list # should list installed packages
+<cwd> node_modules (3)
+├── test-vite-plus-package@<semver>
+├── test-vite-plus-package-optional@<semver>
+└── testnpm2@<semver>

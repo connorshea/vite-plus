@@ -26,13 +26,36 @@ Options:
 Documentation: https://viteplus.dev/guide/install
 
 
-[1]> vp install # should install packages first
+> vp install # should install packages first
 VITE+ - The Unified Toolchain for the Web
 
-error: Install error: Unsupported package manager: bun
+bun install v<semver> (af24e281)
+Resolving dependencies
+Resolved, downloaded and extracted [10]
+Saved lockfile
 
-[1]> vp outdated testnpm2 # should show outdated package
-error: Install error: Unsupported package manager: bun
++ test-vite-plus-top-package@<semver> (v1.1.0 available)
++ test-vite-plus-other-optional@<semver> (v1.1.0 available)
++ testnpm2@<semver> (v1.0.1 available)
 
-[1]> vp outdated -r # should support recursive output
-error: Install error: Unsupported package manager: bun
+4 packages installed [<variable>ms]
+
+> vp outdated testnpm2 # should show outdated package
+bun outdated v<semver> (af24e281)
+|--------------------------------------|
+| Package  | Current | Update | Latest |
+|----------|---------|--------|--------|
+| testnpm2 | <semver>   | <semver>  | <semver>  |
+|--------------------------------------|
+
+> vp outdated -r # should support recursive output
+bun outdated v<semver> (af24e281)
+|---------------------------------------------------------------------------------------------|
+| Package                                  | Current | Update | Latest | Workspace            |
+|------------------------------------------|---------|--------|--------|----------------------|
+| testnpm2                                 | <semver>   | <semver>  | <semver>  | command-outdated-bun |
+|------------------------------------------|---------|--------|--------|----------------------|
+| test-vite-plus-top-package (dev)         | <semver>   | <semver>  | <semver>  | command-outdated-bun |
+|------------------------------------------|---------|--------|--------|----------------------|
+| test-vite-plus-other-optional (optional) | <semver>   | <semver>  | <semver>  | command-outdated-bun |
+|---------------------------------------------------------------------------------------------|
