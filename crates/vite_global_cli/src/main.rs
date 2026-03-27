@@ -368,10 +368,10 @@ async fn main() -> ExitCode {
 
     // Display upgrade notice if a newer version is available
     if let Some(handle) = update_handle
-        && let Ok(Ok(Some(new_version))) =
+        && let Ok(Ok(Some(result))) =
             tokio::time::timeout(std::time::Duration::from_millis(500), handle).await
     {
-        upgrade_check::display_upgrade_notice(&new_version);
+        upgrade_check::display_upgrade_notice(&result);
     }
 
     tip_context.exit_code = if exit_code == ExitCode::SUCCESS { 0 } else { 1 };

@@ -2,7 +2,7 @@
 //!
 //! Periodically queries the npm registry for the latest version and caches the
 //! result to `~/.vite-plus/.upgrade-check.json`. Displays a one-line notice on
-//! stderr when a newer version is available.
+//! stderr when a newer version is available, at most once per 24 hours.
 
 use std::{
     io::IsTerminal,
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use vite_install::{config::npm_registry, request::HttpClient};
 
 const CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
+const PROMPT_INTERVAL_SECS: u64 = 24 * 60 * 60;
 const CACHE_FILE_NAME: &str = ".upgrade-check.json";
 
 #[expect(clippy::disallowed_types)] // String required for serde JSON round-trip
@@ -21,6 +22,7 @@ const CACHE_FILE_NAME: &str = ".upgrade-check.json";
 struct UpgradeCheckCache {
     latest: String,
     checked_at: u64,
+    prompted_at: u64,
 }
 
 #[expect(clippy::disallowed_types)] // String required for serde deserialization
@@ -57,6 +59,10 @@ fn should_check(cache: Option<&UpgradeCheckCache>, now: u64) -> bool {
     cache.is_none_or(|c| now.saturating_sub(c.checked_at) > CHECK_INTERVAL_SECS)
 }
 
+fn should_prompt(cache: Option<&UpgradeCheckCache>, now: u64) -> bool {
+    cache.is_none_or(|c| now.saturating_sub(c.prompted_at) > PROMPT_INTERVAL_SECS)
+}
+
 #[expect(clippy::disallowed_types)] // String returned from serde deserialization
 async fn resolve_latest_version() -> Option<String> {
     let registry_raw = npm_registry();
@@ -67,45 +73,72 @@ async fn resolve_latest_version() -> Option<String> {
     Some(meta.version)
 }
 
-/// Returns the latest version string if it differs from the current version,
-/// or `None` if up to date / check disabled / network error.
-#[expect(clippy::disallowed_types)] // String returned to caller for display
-pub async fn check_for_update() -> Option<String> {
-    let install_dir = vite_shared::get_vite_plus_home().ok()?;
-    let current_version = env!("CARGO_PKG_VERSION");
-    let cache = read_cache(&install_dir);
-    let now = now_secs();
-
-    if !should_check(cache.as_ref(), now) {
-        return cache.filter(|c| c.latest != current_version).map(|c| c.latest);
-    }
-
-    let latest = resolve_latest_version().await?;
-    write_cache(&install_dir, &UpgradeCheckCache { latest: latest.clone(), checked_at: now });
-    (latest != current_version).then_some(latest)
+/// Result of the upgrade check: the new version to display, plus the install
+/// dir needed to update `prompted_at` after display.
+pub struct UpgradeCheckResult {
+    pub new_version: String,
+    install_dir: vite_path::AbsolutePathBuf,
 }
 
-/// Print a one-line upgrade notice to stderr.
-#[expect(clippy::print_stderr, clippy::disallowed_macros)]
-pub fn display_upgrade_notice(new_version: &str) {
+/// Returns an upgrade check result if a newer version is available and the user
+/// hasn't been prompted within the last 24 hours. Returns `None` otherwise.
+#[expect(clippy::disallowed_types)] // String returned to caller for display
+pub async fn check_for_update() -> Option<UpgradeCheckResult> {
+    let install_dir = vite_shared::get_vite_plus_home().ok()?;
     let current_version = env!("CARGO_PKG_VERSION");
-    if !std::io::stderr().is_terminal() {
-        return;
+    let now = now_secs();
+    let mut cache = read_cache(&install_dir);
+
+    if should_check(cache.as_ref(), now) {
+        // Query registry and update cache
+        let latest = resolve_latest_version().await?;
+        let prompted_at = cache.as_ref().map_or(0, |c| c.prompted_at);
+        let new_cache = UpgradeCheckCache { latest: latest.clone(), checked_at: now, prompted_at };
+        write_cache(&install_dir, &new_cache);
+        cache = Some(new_cache);
     }
+
+    let cache = cache?;
+
+    if cache.latest == current_version {
+        return None;
+    }
+
+    if !should_prompt(Some(&cache), now) {
+        return None;
+    }
+
+    Some(UpgradeCheckResult { new_version: cache.latest, install_dir })
+}
+
+/// Print a one-line upgrade notice to stderr and record the prompt time.
+#[expect(clippy::print_stderr, clippy::disallowed_macros)]
+pub fn display_upgrade_notice(result: &UpgradeCheckResult) {
+    let current_version = env!("CARGO_PKG_VERSION");
     eprintln!(
         "\n{} {} {} {}, run {}",
         "vp update available:".bright_black(),
         current_version.bright_black(),
         "\u{2192}".bright_black(),
-        new_version.green().bold(),
+        result.new_version.green().bold(),
         "`vp upgrade`".bright_black().bold(),
     );
+
+    // Record that we prompted, so we don't nag again for 24h
+    if let Some(mut cache) = read_cache(&result.install_dir) {
+        cache.prompted_at = now_secs();
+        write_cache(&result.install_dir, &cache);
+    }
 }
 
 /// Whether the upgrade check should run for the given command args.
 /// Returns `false` for commands excluded by design (upgrade, implode, --version)
 /// and for any command invoked with `--silent` or `--json`.
 pub fn should_run_for_command(args: &crate::cli::Args, raw_args: &[String]) -> bool {
+    if !cfg!(test) && !std::io::stderr().is_terminal() {
+        return false;
+    }
+
     if args.version {
         return false;
     }
@@ -146,12 +179,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let dir_path = vite_path::AbsolutePathBuf::new(dir.path().to_path_buf()).unwrap();
 
-        let cache = UpgradeCheckCache { latest: "1.2.3".to_owned(), checked_at: 1000 };
+        let cache =
+            UpgradeCheckCache { latest: "1.2.3".to_owned(), checked_at: 1000, prompted_at: 900 };
         write_cache(&dir_path, &cache);
 
         let loaded = read_cache(&dir_path).expect("should read back cache");
         assert_eq!(loaded.latest, "1.2.3");
         assert_eq!(loaded.checked_at, 1000);
+        assert_eq!(loaded.prompted_at, 900);
     }
 
     #[test]
@@ -207,7 +242,8 @@ mod tests {
     fn should_check_returns_false_when_cache_fresh() {
         with_env_vars_cleared(|| {
             let now = now_secs();
-            let cache = UpgradeCheckCache { latest: "1.0.0".to_owned(), checked_at: now };
+            let cache =
+                UpgradeCheckCache { latest: "1.0.0".to_owned(), checked_at: now, prompted_at: 0 };
             assert!(!should_check(Some(&cache), now));
         });
     }
@@ -218,7 +254,11 @@ mod tests {
         with_env_vars_cleared(|| {
             let now = now_secs();
             let stale_time = now - CHECK_INTERVAL_SECS - 1;
-            let cache = UpgradeCheckCache { latest: "1.0.0".to_owned(), checked_at: stale_time };
+            let cache = UpgradeCheckCache {
+                latest: "1.0.0".to_owned(),
+                checked_at: stale_time,
+                prompted_at: 0,
+            };
             assert!(should_check(Some(&cache), now));
         });
     }
@@ -232,6 +272,38 @@ mod tests {
             }
             assert!(!should_check(None, now_secs()));
         });
+    }
+
+    #[test]
+    fn should_prompt_returns_true_when_no_cache() {
+        assert!(should_prompt(None, now_secs()));
+    }
+
+    #[test]
+    fn should_prompt_returns_true_when_never_prompted() {
+        let cache = UpgradeCheckCache {
+            latest: "2.0.0".to_owned(),
+            checked_at: now_secs(),
+            prompted_at: 0,
+        };
+        assert!(should_prompt(Some(&cache), now_secs()));
+    }
+
+    #[test]
+    fn should_prompt_returns_false_when_recently_prompted() {
+        let now = now_secs();
+        let cache =
+            UpgradeCheckCache { latest: "2.0.0".to_owned(), checked_at: now, prompted_at: now };
+        assert!(!should_prompt(Some(&cache), now));
+    }
+
+    #[test]
+    fn should_prompt_returns_true_when_prompt_stale() {
+        let now = now_secs();
+        let stale = now - PROMPT_INTERVAL_SECS - 1;
+        let cache =
+            UpgradeCheckCache { latest: "2.0.0".to_owned(), checked_at: now, prompted_at: stale };
+        assert!(should_prompt(Some(&cache), now));
     }
 
     fn parse_args(args: &[&str]) -> crate::cli::Args {

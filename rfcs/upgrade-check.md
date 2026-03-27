@@ -111,52 +111,23 @@ Location: `~/.vite-plus/.upgrade-check.json`
 Format (single JSON line for simplicity):
 
 ```json
-{ "latest": "0.2.0", "checked_at": 1711500000 }
+{ "latest": "0.2.0", "checked_at": 1711500000, "prompted_at": 1711500000 }
 ```
 
 - `latest`: The version string returned by the npm registry for the `latest` dist-tag
-- `checked_at`: Unix timestamp (seconds) of when the check was performed
+- `checked_at`: Unix timestamp (seconds) of when the registry was last queried
+- `prompted_at`: Unix timestamp (seconds) of when the user was last shown the notice
 
 The file is small and cheap to read. A direct overwrite is sufficient — if corruption occurs (e.g., process killed mid-write), the worst case is one extra registry query.
 
 ### Check Logic (Pseudocode)
 
-```rust
-fn should_check(cache: Option<&UpdateCheckCache>) -> bool {
-    // Skip if disabled
-    if env_var("VP_NO_UPDATE_CHECK").is_some() { return false; }
-    if env_var("CI").is_some() { return false; }
-    if env_var("VITE_PLUS_CLI_TEST").is_some() { return false; }
+Two independent rate limits control the behavior:
 
-    match cache {
-        Some(c) => now() - c.checked_at > 24 * 60 * 60, // 24 hours
-        None => true, // No cache, first check
-    }
-}
+1. **`checked_at`** — controls how often the registry is queried (once per 24h)
+2. **`prompted_at`** — controls how often the notice is shown (once per 24h)
 
-async fn check_for_update() -> Option<String> {
-    let cache = read_cache(); // Returns None if file missing or corrupt
-
-    if !should_check(cache.as_ref()) {
-        // Use cached result (may be None if no cache exists)
-        return cache.and_then(|c| {
-            if c.latest != current_version() { Some(c.latest) } else { None }
-        });
-    }
-
-    // Query registry (reuse existing resolve_version from upgrade command)
-    match resolve_latest_version().await {
-        Ok(version) => {
-            write_cache(&UpdateCheckCache {
-                latest: version.clone(),
-                checked_at: now(),
-            });
-            if version != current_version() { Some(version) } else { None }
-        }
-        Err(_) => None, // Silent failure
-    }
-}
-```
+This means: the registry is queried at most once per day, and even if an update exists, the user sees the notice at most once per day. After displaying, `prompted_at` is updated so subsequent runs within 24h are silent.
 
 ### Display
 
@@ -186,7 +157,8 @@ The notice is **not shown** when:
 | `--json` output mode            | Machine-readable output should not contain notices |
 | `vp upgrade` is running         | Already upgrading, don't nag                       |
 | `vp upgrade --check` is running | Already checking, don't duplicate                  |
-| Stderr is not a TTY             | Piped/redirected output                            |
+| Stderr is not a TTY             | Non-interactive / piped / redirected output        |
+| Already prompted within 24h     | Show at most once per day, not on every run        |
 
 ### Commands That Trigger the Check
 
@@ -229,7 +201,7 @@ No new crate — this is a small, focused module in the existing `vite_global_cl
 
 ```rust
 // In main.rs, before running the command:
-let update_handle = if should_run_update_check(&command) {
+let update_handle = if should_run_for_command(&args, &raw_args) {
     Some(tokio::spawn(check_for_update()))
 } else {
     None
@@ -239,8 +211,8 @@ let update_handle = if should_run_update_check(&command) {
 if let Some(handle) = update_handle {
     // Wait up to 500ms for the result — if the network is slow, skip it
     match tokio::time::timeout(Duration::from_millis(500), handle).await {
-        Ok(Ok(Some(new_version))) => {
-            display_upgrade_notice(&new_version);
+        Ok(Ok(Some(result))) => {
+            display_upgrade_notice(&result); // also records prompted_at
         }
         _ => {} // Timeout, error, or no update — silent
     }
@@ -248,6 +220,8 @@ if let Some(handle) = update_handle {
 ```
 
 The 500ms timeout ensures that even if the registry is slow, the user's command exits promptly. In practice, most checks will read from cache (instant) or complete the network request during the time the actual command runs.
+
+`display_upgrade_notice` updates `prompted_at` in the cache file after showing the notice, so subsequent runs within 24h are silent.
 
 ## Design Decisions
 
