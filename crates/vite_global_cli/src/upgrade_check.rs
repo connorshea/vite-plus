@@ -11,7 +11,8 @@ use std::{
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
-use vite_install::{config::npm_registry, request::HttpClient};
+
+use crate::commands::upgrade::registry;
 
 const CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
 const PROMPT_INTERVAL_SECS: u64 = 24 * 60 * 60;
@@ -23,12 +24,6 @@ struct UpgradeCheckCache {
     latest: String,
     checked_at: u64,
     prompted_at: u64,
-}
-
-#[expect(clippy::disallowed_types)] // String required for serde deserialization
-#[derive(Deserialize)]
-struct VersionOnly {
-    version: String,
 }
 
 fn read_cache(install_dir: &vite_path::AbsolutePath) -> Option<UpgradeCheckCache> {
@@ -64,13 +59,8 @@ fn should_prompt(cache: Option<&UpgradeCheckCache>, now: u64) -> bool {
 }
 
 #[expect(clippy::disallowed_types)] // String returned from serde deserialization
-async fn resolve_latest_version() -> Option<String> {
-    let registry_raw = npm_registry();
-    let registry = registry_raw.trim_end_matches('/');
-    let url = vite_str::format!("{registry}/vite-plus/latest");
-    let client = HttpClient::new();
-    let meta: VersionOnly = client.get_json(&url).await.ok()?;
-    Some(meta.version)
+async fn resolve_version_string() -> Option<String> {
+    registry::resolve_version_string("latest", None).await.ok()
 }
 
 pub struct UpgradeCheckResult {
@@ -80,7 +70,6 @@ pub struct UpgradeCheckResult {
 
 /// Returns an upgrade check result if a newer version is available and the user
 /// hasn't been prompted within the last 24 hours. Returns `None` otherwise.
-#[expect(clippy::disallowed_types)] // String returned to caller for display
 pub async fn check_for_update() -> Option<UpgradeCheckResult> {
     let install_dir = vite_shared::get_vite_plus_home().ok()?;
     let current_version = env!("CARGO_PKG_VERSION");
@@ -88,16 +77,28 @@ pub async fn check_for_update() -> Option<UpgradeCheckResult> {
     let mut cache = read_cache(&install_dir);
 
     if should_check(cache.as_ref(), now) {
-        let latest = resolve_latest_version().await?;
         let prompted_at = cache.as_ref().map_or(0, |c| c.prompted_at);
-        let new_cache = UpgradeCheckCache { latest, checked_at: now, prompted_at };
-        write_cache(&install_dir, &new_cache);
-        cache = Some(new_cache);
+
+        match resolve_version_string().await {
+            Some(latest) => {
+                let new_cache = UpgradeCheckCache { latest, checked_at: now, prompted_at };
+                write_cache(&install_dir, &new_cache);
+                cache = Some(new_cache);
+            }
+            None => {
+                // Still update checked_at so we back off for 24h instead of
+                // retrying on every command when the registry is unreachable.
+                let latest = cache.as_ref().map(|c| c.latest.clone()).unwrap_or_default();
+                let failed_cache = UpgradeCheckCache { latest, checked_at: now, prompted_at };
+                write_cache(&install_dir, &failed_cache);
+                cache = Some(failed_cache);
+            }
+        }
     }
 
     let cache = cache?;
 
-    if cache.latest == current_version {
+    if cache.latest.is_empty() || cache.latest == current_version {
         return None;
     }
 
