@@ -632,6 +632,16 @@ Use \`vp create --list\` to list all available templates, or run \`vp create --h
   }
 
   // Resolve package manager: workspace detection > CLI flag > interactive prompt/default
+  if (
+    options.packageManager &&
+    !Object.values(PackageManager).includes(options.packageManager as PackageManager)
+  ) {
+    const valid = Object.values(PackageManager).join(', ');
+    prompts.log.error(
+      `Invalid package manager: ${options.packageManager}. Must be one of: ${valid}`,
+    );
+    cancelAndExit('Invalid --package-manager value', 1);
+  }
   const packageManager =
     workspaceInfoOptional.packageManager ??
     (options.packageManager as PackageManager | undefined) ??
