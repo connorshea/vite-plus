@@ -37,12 +37,8 @@ fn read_cache(install_dir: &vite_path::AbsolutePath) -> Option<UpgradeCheckCache
 
 fn write_cache(install_dir: &vite_path::AbsolutePath, cache: &UpgradeCheckCache) {
     let cache_path = install_dir.join(CACHE_FILE_NAME);
-    let tmp_path = install_dir.join(".upgrade-check.json.tmp");
-    let Ok(data) = serde_json::to_string(cache) else {
-        return;
-    };
-    if std::fs::write(tmp_path.as_path(), &data).is_ok() {
-        let _ = std::fs::rename(tmp_path.as_path(), cache_path.as_path());
+    if let Ok(data) = serde_json::to_string(cache) {
+        let _ = std::fs::write(cache_path.as_path(), &data);
     }
 }
 
@@ -91,7 +87,8 @@ pub async fn check_for_update() -> Option<String> {
 
 /// Print a one-line upgrade notice to stderr.
 #[expect(clippy::print_stderr, clippy::disallowed_macros)]
-pub fn display_upgrade_notice(current_version: &str, new_version: &str) {
+pub fn display_upgrade_notice(new_version: &str) {
+    let current_version = env!("CARGO_PKG_VERSION");
     if !std::io::stderr().is_terminal() {
         return;
     }

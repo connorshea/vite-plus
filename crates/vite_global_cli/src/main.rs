@@ -371,7 +371,7 @@ async fn main() -> ExitCode {
         && let Ok(Ok(Some(new_version))) =
             tokio::time::timeout(std::time::Duration::from_millis(500), handle).await
     {
-        upgrade_check::display_upgrade_notice(env!("CARGO_PKG_VERSION"), &new_version);
+        upgrade_check::display_upgrade_notice(&new_version);
     }
 
     tip_context.exit_code = if exit_code == ExitCode::SUCCESS { 0 } else { 1 };

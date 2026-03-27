@@ -117,7 +117,7 @@ Format (single JSON line for simplicity):
 - `latest`: The version string returned by the npm registry for the `latest` dist-tag
 - `checked_at`: Unix timestamp (seconds) of when the check was performed
 
-The file is small, atomic to write (write to temp + rename), and cheap to read.
+The file is small and cheap to read. A direct overwrite is sufficient — if corruption occurs (e.g., process killed mid-write), the worst case is one extra registry query.
 
 ### Check Logic (Pseudocode)
 
@@ -238,7 +238,7 @@ if let Some(handle) = update_handle {
     // Wait up to 500ms for the result — if the network is slow, skip it
     match tokio::time::timeout(Duration::from_millis(500), handle).await {
         Ok(Ok(Some(new_version))) => {
-            display_upgrade_notice(&current_version, &new_version);
+            display_upgrade_notice(&new_version);
         }
         _ => {} // Timeout, error, or no update — silent
     }
@@ -246,20 +246,6 @@ if let Some(handle) = update_handle {
 ```
 
 The 500ms timeout ensures that even if the registry is slow, the user's command exits promptly. In practice, most checks will read from cache (instant) or complete the network request during the time the actual command runs.
-
-#### Cache Atomicity
-
-```rust
-fn write_cache(cache: &UpdateCheckCache) -> Result<()> {
-    let cache_path = vite_plus_home().join(".upgrade-check.json");
-    let tmp_path = cache_path.with_extension("tmp");
-    fs::write(&tmp_path, serde_json::to_string(cache)?)?;
-    fs::rename(&tmp_path, &cache_path)?;
-    Ok(())
-}
-```
-
-Write to a temp file then rename — atomic on both Unix and Windows (NTFS).
 
 ## Design Decisions
 
