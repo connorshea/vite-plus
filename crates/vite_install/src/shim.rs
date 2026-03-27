@@ -13,8 +13,15 @@ pub async fn write_native_shims(
     to_bin: impl AsRef<Path>,
 ) -> Result<(), Error> {
     let to_bin = to_bin.as_ref();
-    let relative_path = diff_paths(source_file, to_bin.parent().unwrap()).unwrap();
-    let relative_file = relative_path.to_str().unwrap();
+    let parent = to_bin
+        .parent()
+        .ok_or_else(|| Error::CannotFindBinaryPath("shim path has no parent directory".into()))?;
+    let relative_path = diff_paths(&source_file, parent).ok_or_else(|| {
+        Error::CannotFindBinaryPath("cannot compute relative path for shim".into())
+    })?;
+    let relative_file = relative_path
+        .to_str()
+        .ok_or_else(|| Error::CannotFindBinaryPath("shim path is not valid UTF-8".into()))?;
 
     write(to_bin, native_sh_shim(relative_file)).await?;
     write(to_bin.with_extension("cmd"), native_cmd_shim(relative_file)).await?;
