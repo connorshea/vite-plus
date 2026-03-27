@@ -113,12 +113,13 @@ pub async fn check_for_update() -> Option<UpgradeCheckResult> {
 pub fn display_upgrade_notice(result: &UpgradeCheckResult) {
     let current_version = env!("CARGO_PKG_VERSION");
     eprintln!(
-        "\n{} {} {} {}, run {}",
+        "\n{} {} {} {}{} {}",
         "vp update available:".bright_black(),
         current_version.bright_black(),
         "\u{2192}".bright_black(),
         result.cache.latest.bright_green().bold(),
-        "`vp upgrade`".bright_black().bold(),
+        ", run".bright_black(),
+        "vp upgrade".bright_green().bold(),
     );
 
     let mut cache = result.cache.clone();
