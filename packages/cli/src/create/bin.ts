@@ -11,7 +11,7 @@ import {
   rewriteMonorepoProject,
   rewriteStandaloneProject,
 } from '../migration/migrator.js';
-import { DependencyType, type PackageManager, type WorkspaceInfo } from '../types/index.js';
+import { DependencyType, PackageManager, type WorkspaceInfo } from '../types/index.js';
 import {
   detectExistingAgentTargetPaths,
   selectAgentTargetPaths,
