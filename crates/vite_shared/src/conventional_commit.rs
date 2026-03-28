@@ -39,7 +39,10 @@ pub struct ConventionalCommit<'a> {
 /// assert!(commit.breaking);
 /// ```
 #[must_use]
-pub fn parse_conventional_commit(subject: &str, body: &str) -> Option<ConventionalCommit<'_>> {
+pub fn parse_conventional_commit<'a>(
+    subject: &'a str,
+    body: &'a str,
+) -> Option<ConventionalCommit<'a>> {
     // Header and BREAKING CHANGE footer parsing intentionally follows the Conventional Commits
     // 1.0.0 grammar rather than git-conventional-commits dialects.
     // https://www.conventionalcommits.org/en/v1.0.0/#specification
